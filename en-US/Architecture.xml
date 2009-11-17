@@ -1,0 +1,1039 @@
+<?xml version='1.0'?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+	  ]>
+
+<chapter id="Application_Development_Guide-Architecture">
+  <title>Architecture</title>
+  <para>
+    This chapter describes the main principles and architecture choices behind the definition of the libvirt API.
+  </para>
+
+  <section id="Application_Development_Guide-Architecture-Object_Model">
+    <title>Object model</title>
+
+    <para>
+
+      The scope of the libvirt API is intended to extend to all functions necessary for
+      deployment and management of virtual machines. This entails management of both the core
+      hypervisor functions and host resources that are required by virtual machines, such as
+      networking, storage and PCI/USB devices. Most of the APIs exposed by libvirt have
+      a pluggable internal backend, allowing support for different underlying virtualization
+      technologies and operating systems. Thus, the extent of the functionality available from
+      an particular API is determined by the specific hypervisor driver in use and the
+      capabilities of the underlying virtualization technology.
+    </para>
+
+    <section id="Application_Development_Guide-Object_Model-Connection">
+      <title>Hypervisor connections</title>
+
+      <para>
+        A connection is the primary or top level object in the libvirt API. An instance
+        of this object is required before attempting to use almost any of the APIs. A
+        connection is associated with a particular hypervisor, which may be running locally
+        on the same machine as the libvirt client application, or on a remote machine
+        over the network. In all cases, the connection is represented with the <literal>virConnectPtr</literal> object and identified by a URI. The URI scheme
+        and path defines the hypervisor to connect to, while the host part of the URI
+        determines where it is located. Refer to <xref linkend="Application_Development_Guide-Connections-URI_Formats"/>
+        for a full description of valid URIs.
+      </para>
+
+      <para>
+        An application is permitted to open multiple connections at the same time, even when using
+        more than one type of hypervisor on a single machine. For example, a host may provide
+        both KVM full machine virtualization and LXC container virtualization. A connection
+        object may be used concurrently across multiple threads. Once a connection has been
+        established, it is possible to obtain handles to other managed objects or create new
+        managed objects, as discussed in <xref linkend="Application_Development_Guide-Object_Model-Domain"/>..
+      </para>
+    </section>
+
+    <section id="Application_Development_Guide-Object_Model-Domain">
+      <title>Guest domains</title>
+
+      <para>
+        A guest domain can refer to either a running virtual machine or a configuration
+        that can be used to launch a virtual machine. The connection object provides APIs
+        to enumerate the guest domains, create new guest domains and manage existing domains.
+        A guest domain is represented with the
+        <literal>virDomainPtr</literal>
+        object and has a number of unique identifiers.
+      </para>
+
+      <itemizedlist>
+        <title>Unique identifiers</title>
+
+        <listitem>
+
+          <para>
+            <application>ID</application>: positive integer, unique amongst running guest domains on a single
+            host. An inactive domain does not have an ID.
+          </para>
+        </listitem>
+
+        <listitem>
+
+          <para>
+            <application>name</application>: short string, unique amongst all guest domains on a single host, both running and inactive. To ensure maximum portability between hypervisors, it is recommended that names only include alphanumeric (<literal>a</literal> - <literal>Z</literal>, <literal>0</literal> - <literal>9</literal>), hyphen (<literal> - </literal>) and underscore (<literal> _ </literal>) characters.
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            <application>UUID</application>: 16 unsigned bytes, guaranteed to be unique amongst all guest
+            domains on any host. RFC 4122 defines the format for UUIDs and provides
+            a recommended algorithm for generating UUIDs with guaranteed uniqueness.
+          </para>
+        </listitem>
+      </itemizedlist>
+
+      <para>
+        A guest domain may be transient or persistent. A transient guest domain
+        can only be managed while it is running on the host. Once it is powered off, all trace of it will disappear. A persistent guest domain has its configuration
+        maintained in a data store on the host by the hypervisor, in an implementation
+        defined format. Thus when a persistent guest is powered off, it is still
+        possible to manage its inactive configuration. A transient guest can be turned into
+        a persistent guest while it is running by defining a configuration for it.
+      </para>
+
+      <para>
+        Refer to <xref linkend="Application_Development_Guide-Guest_Domains"/> for further information about using guest domain objects.
+      </para>
+    </section>
+
+    <section id="Application_Development_Guide-Architecture-Object_Model-Network">
+      <title>Virtual networks</title>
+
+      <para>
+        A virtual network provides a method for connecting the network devices of one or more guest domains within a single host. The virtual network can either:
+      </para>
+
+      <itemizedlist>
+        <listitem>
+          <para>
+            Remain isolated to the host; or
+          </para>
+        </listitem>
+        <listitem>
+          <para>
+            Allow routing of traffic off-node via the active network interfaces of the host OS. This includes the option to apply NAT to IPv4 traffic.
+          </para>
+        </listitem>
+      </itemizedlist>
+
+      <para>
+        A virtual network is represented by the <literal>virNetworkPtr</literal> object and has two unique
+        identifiers.
+      </para>
+
+      <itemizedlist>
+        <title>Unique identifiers</title>
+        <listitem>
+          <para>
+            <application>name</application>: short string, unique amongst all virtual network on a single host,
+            both running and inactive. For maximum portability between hypervisors, applications should only use the characters <literal>a-Z,0-9,-,_</literal> in names.
+          </para>
+        </listitem>
+        <listitem>
+          <para>
+            <application>UUID</application>: 16 unsigned bytes, guaranteed to be unique amongst all virtual
+            networks on any host. RFC 4122 defines the format for UUIDs and provides
+            a recommended algorithm for generating UUIDs with guaranteed uniqueness.
+          </para>
+        </listitem>
+      </itemizedlist>
+
+
+      <para>
+        A virtual network may be transient or persistent. A transient virtual network can only be managed while it it is running on the host. When taken offline, all trace of it will disappear. A persistent virtual network has its configuration maintained in a data store on the host, in an implementation defined format. Thus when a persistent network is brought offline, it is still possible to manage its inactive config. A transient network can be turned into a persistent network on the fly by defining a configuration for it.
+      </para>
+
+      <para>
+        After installation of libvirt, every host will get a single virtual network instance called 'default', which provides DHCP services to guests and allows NAT'd IP connectivity to the host's interfaces.
+        This service is of most use to hosts with intermittent network connectivity. For example, laptops using wireless networking.
+      </para>
+
+      <para>
+        Refer to <xref linkend="Application_Development_Guide-Virtual_Networks"/> for further information about using virtual network objects.
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Architecture-Object_Model-StoragePool">
+      <title>Storage pools</title>
+
+      <para>
+        The storage pool object provides a mechanism for managing all types of storage on a host, such as local disk, logical volume group, iSCSI target, FibreChannel HBA and local/network file system. A pool refers
+        to a quantity storage that is able to be allocated to form individual volumes. A storage pool is represented by the <literal>virStoragePoolPtr</literal> object and has a pair of unique identifiers.
+      </para>
+
+      <itemizedlist>
+        <title>Unique identifiers</title>
+        <listitem>
+          <para>
+            <application>name</application>: short string, unique amongst all storage pools on a single host,
+            both running and inactive. For maximum portability between hypervisors
+            applications should only rely on being able to use the characters
+            <literal>a-Z,0-9,-,_</literal> in names.
+          </para>
+        </listitem>
+        <listitem>
+          <para>
+            <application>UUID</application>: 16 unsigned bytes, guaranteed to be unique amongst all storage
+            pools on any host. RFC 4122 defines the format for UUIDs and provides
+            a recommended algorithm for generating UUIDs with guaranteed uniqueness.
+          </para>
+        </listitem>
+      </itemizedlist>
+
+      <para>
+        A storage pool may be transient, or persistent. A transient storage pool
+        can only be managed while it is running on the host and, when powered off,
+        all trace of it will disappear (the underlying physical storage still exists
+        of course !). A persistent storage pool has its configuration
+        maintained in a data store on the host by the hypervisor, in an implementation
+        defined format. Thus when a persistent storage pool is deactivated, it is still
+        possible to manage its inactive config. A transient pool can be turned into
+        a persistent pool on the fly by defining a configuration for it.
+      </para>
+
+
+      <para>
+        Refer to <xref linkend="Application_Development_Guide-Storage_Pools"/> for further information about using storage pool objects.
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Architecture-Object_Model-StorageVol">
+      <title>Storage volumes</title>
+
+      <para>
+        The storage volume object provides management of an allocated block of
+        storage within a pool, be it a disk partition, logical volume, SCSI/iSCSI
+        LUN, or a file within a local/network file system. Once allocated, a volume
+        can be used to provide disks to one (or more) virtual domains. A volume is
+        represented by the <literal>virStorageVolPtr</literal> object, and has
+        three identifiers
+      </para>
+
+      <itemizedlist>
+        <title>Unique identifiers</title>
+        <listitem>
+          <para>
+            name: short string, unique amongst all storage volumes within a storage
+            pool. For maximum portability between implementations applications
+            should only rely on being able to use the characters
+            <literal>a-Z,0-9,-,_</literal> in names. The name is not guaranteed
+            to be stable across reboots, or between hosts, even if the storage
+            pool is shared between hosts.
+          </para>
+        </listitem>
+        <listitem>
+          <para>
+            <application>Key</application>: a opaque string, of arbitrary printable characters, intended to
+            uniquely identify the volume within the pool. The key is intended to be
+            stable across reboots, and between hosts.
+          </para>
+        </listitem>
+        <listitem>
+          <para>
+            <application>Path</application>: a file system path referring to the volume. The path is unique
+            amongst all storage volumes on a single host. If the storage pool
+            is configured with a suitable target path, the volume path may be
+            stable across reboots, and between hosts.
+          </para>
+        </listitem>
+      </itemizedlist>
+
+      <para>
+        Refer to <xref linkend="Application_Development_Guide-Storage_Pools-Volume"/> for further information about using storage volume objects
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Architecture-Object_Model-HostDev">
+      <title>Host devices</title>
+
+      <para>
+        Host devices provide a view to the hardware devices available on the
+        host machine. This covers both the physical USB or PCI devices and
+        logical devices these provide, such as a NIC, disk, disk controller,
+        sound card, etc. Devices can be arranged to form a tree structure
+        allowing relationships to be identified. A host device is represented
+        by the <literal>virNodeDevPtr</literal> object, and has one
+        general identifier, though specific device types may have their own
+        unique identifiers.
+      </para>
+
+      <itemizedlist>
+        <title>Unique identifiers</title>
+        <listitem>
+          <para>
+            <application>name</application>: short string, unique amongst all devices on the host. The
+            naming scheme is determined by the host operating system. The name
+            is not guaranteed to be stable across reboots.
+          </para>
+        </listitem>
+      </itemizedlist>
+
+      <para>
+        Physical devices can be detached from the host OS drivers,
+        which implicitly removes all associated logical devices, and
+        then assigned to a guest domain. Physical device information is
+        also useful when working with the storage and networking APIs
+        to determine what resources are available to configure.
+      </para>
+
+      <para>
+        Refer to <xref linkend="Application_Development_Guide-Host_Devices"/> for further information about using host device objects.
+      </para>
+
+    </section>
+
+  </section>
+
+  <section id="Application_Development_Guide-Architecture-Driver_Model">
+    <title>Driver model</title>
+
+    <para>
+      The libvirt library exposes a guaranteed stable API &amp; ABI which is decoupled
+      from any particular virtualization technology. In addition many of the APIs have
+      associated XML schemata which are considered part of the stable ABI guarantee.
+      Internally, there are multiple of implementations of the public ABI, each
+      targeting a different virtualization technology. Each implementation is referred
+      to as a driver. When obtaining a instance of the <literal>virConnectPtr</literal>
+      object, the application developer can provide a URI to determine which hypervisor
+      driver is activated.
+    </para>
+
+    <para>
+      No two virtualization technologies have exactly the same functionality.
+      The libvirt goal is not to restrict applications to a lowest common
+      denominator, since this would result in an unacceptably limited API.
+      Instead libvirt attempts to define a representation of concepts and
+      configuration that is hypervisor agnostic, and adaptable to allow
+      future extensions. Thus, if two hypervisors implement a comparable
+      feature, libvirt provides a uniform control mechanism or configuration
+      format for that feature.
+    </para>
+
+    <para>
+      If a libvirt driver does not implement a particular API, then it will
+      return a VIR_ERR_NO_SUPPORT error code enabling this to be detected.
+      There is also an API to allow applications to the query certain
+      capabilities of a hypervisor, such as the type of guest ABIs that
+      are supported.
+    </para>
+
+    <para>
+      Internally a libvirt driver will attempt to utilize whatever management
+      channels are available for the virtualization technology in question.
+      For some drivers this may require libvirt to run directly on the host
+      being managed, talking to a local hypervisor, while others may be able
+      to communicate remotely over an RPC service. For drivers which have
+      no native remote communication capability, libvirt provides a generic
+      secure RPC service. This is discussed in detail later in this chapter.
+    </para>
+
+    <itemizedlist>
+      <title>Hypervisor drivers</title>
+
+      <listitem>
+        <para>
+          <application>Xen</application>: The open source Xen hypervisor
+          providing paravirtualized and fully virtualized machines.
+          A single system driver runs in the Dom0 host talking directly
+          to a combination of the hypervisor, xenstored and xend.
+          Example local URI scheme  <literal>xen:///</literal>.
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          <application>QEMU</application>: Any open source QEMU based virtualization
+          technology, including KVM. A single privileged system driver runs in the host
+          managing QEMU processes. Each unprivileged user account also has a private instance
+          of the driver. Example privileged URI scheme <literal>qemu:///system</literal>.
+          Example unprivileged URI scheme <literal>qemu:///session</literal>
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          <application>UML</application>: The User Mode Linux kernel, a pure paravirtualization
+          technology. A single privileged system driver runs in the host managing
+          UML processes. Each unprivileged user account also has a private instance
+          of the driver. Example privileged URI scheme <literal>uml:///system</literal>.
+          Example unprivileged URI scheme <literal>uml:///session</literal>
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          <application>OpenVZ</application>: The OpenVZ container based virtualization
+          technology, using a modified Linux host kernel. A single privileged system
+          driver runs in the host talking to the OpenVZ tools. Example privileged
+          URI scheme <literal>openvz:///system</literal>
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          <application>LXC</application>: The native Linux container based virtualization
+          technology, available with Linux kernels since 2.6.25. A single privileged system
+          driver runs in the host talking to the kernel. Example privileged
+          URI scheme <literal>lxc:///</literal>
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          <application>Remote</application>: Generic secure RPC service talking to
+          a <literal>libvirtd</literal> daemon. Encryption and authentication using
+          a choice of TLS, x509 certificates, SASL (GSSAPI/Kerberos) and SSH tunneling.
+          URIs follow the scheme of the desired driver, but with a hostname filled
+          in, and a data transport name appended to the URI scheme. Example URI to
+          talk to Xen over a TLS channel <literal>xen+tls://somehostname/</literal>.
+          Example URI to talk to QEMU over a SASL channel <literal>qemu+tcp:///somehost/system</literal>
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          <application>Test</application>: A mock driver, providing a virtual
+          in-memory hypervisor covering all the libvirt APIs. Facilities testing
+          of applications using libvirt, by allowing automated tests to run which
+          exercise libvirt APIs without needing to deal with a real hypervisor
+          Example default URI scheme <literal>test:///default</literal>.
+          Example customized URI scheme <literal>test:///path/to/driver/config.xml</literal>
+        </para>
+      </listitem>
+    </itemizedlist>
+
+    <figure id="driver_arch">
+      <title>libvirt driver architecture</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata fileref="images/libvirt-driver-arch.png" format="PNG"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+
+  </section>
+
+  <section id="Application_Development_Guide-Architecture-Remote_Management">
+    <title>Remote management</title>
+
+    <para>
+      While many virtualization technologies provide a remote management
+      capability, libvirt does not assume this and provides a dedicated
+      driver allowing for remote management of any libvirt hypervisor
+      driver. The driver has a variety of data transports providing
+      considerable security for the data communication. The driver is
+      designed such that there is 100% functional equivalence whether
+      talking to the libvirt driver locally, or via the RPC service.
+    </para>
+
+    <para>
+      In addition to the native RPC service included in libvirt, there
+      are a number of alternatives for remote management that will not
+      be discussed in this document. The <literal>libvirt-qpid</literal>
+      project provides an agent for the QPid messaging service, exposing
+      all libvirt managed objects and operations over the message bus.
+      This keeps a fairly close, near 1-to-1, mapping to the C API in
+      libvirt. The <literal>libvirt-CIM</literal> project provides a
+      CIM agent, that maps the libvirt object model onto the DMTF
+      virtualization schema.
+    </para>
+
+    <section id="Application_Development_Guide-Remote_Management-Basic_Usage">
+      <title>Basic usage</title>
+
+      <para>
+        The server end of the RPC service is provided by the <literal>libvirtd</literal>
+        daemon, which must be run on the host to be managed. In an default
+        deployment this daemon will only be listening for connection on a local
+        UNIX domain socket. This only allows for a libvirt client to use the
+        SSH tunnel data transport. With suitable configuration of x509 certificates,
+        or SASL credentials, the <literal>libvirtd</literal> daemon can be told
+        to listen on a TCP socket for direct, non-tunneled client connections.
+      </para>
+
+      <para>
+        As can be seen from earlier example libvirt driver URIs, then hostname
+        field in the URI is always left empty for local libvirt connections.
+        To make use of the libvirt RPC driver, only two changes are required
+        to the local URI. At least a hostname must be specified, at which
+        point libvirt will attempt to use the direct TLS data transport.
+        An alternative data transport can be requested by appending its name
+        to the URI scheme. The URIs formats will be described in detail later
+        in this document <xref linkend="Application_Development_Guide-Architecture-Remote_URIs"/>
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Architecture-Transports">
+      <title>Data Transports</title>
+
+      <para>
+        To cope with the wide variety of deployment environments, the libvirt
+        RPC service supports a number of data transports, all of which can
+        be configured with industry standard encryption and authentication
+        capabilities.
+      </para>
+
+      <table id='transports' frame='all'>
+        <title>Transports</title>
+        <tgroup cols='2' align='left' colsep='1' rowsep='1'>
+          <colspec colname='c1' />
+          <colspec colname='c2' />
+          <thead>
+            <row>
+              <entry><para>Transport</para></entry>
+              <entry><para>Description</para></entry>
+            </row>
+          </thead>
+          <tbody>
+            <row>
+              <entry>
+                <para>tls</para>
+              </entry>
+              <entry>
+                <para>
+                  A TCP socket running the TLS protocol on the wire. This is the
+                  default data transport if none is explicitly requested, and uses a
+                  TCP connection on port 16514. At minimum it is necessary to configure
+                  the server with a x509 certificate authority and issue it a server
+                  certificate. The <literal>libvirtd</literal> server can, optionally,
+                  be configured to require clients to present x509 certificates as a
+                  means of authentication.
+                </para>
+              </entry>
+            </row>
+
+            <row>
+              <entry>
+                <para>tcp</para>
+              </entry>
+              <entry>
+                <para>
+                  A TCP socket without the TLS protocol on the wire. This data transport
+                  should not be used on untrusted networks, unless the SASL authentication
+                  service has been enabled and configured with a plug-in that provides
+                  encryption. The TCP connection is made on port 16509.
+                </para>
+              </entry>
+            </row>
+
+            <row>
+              <entry>
+                <para>unix</para>
+              </entry>
+              <entry>
+                <para>
+                  A local only data transport, allowing users to connect to a
+                  <literal>libvirtd</literal> daemon running as a different user
+                  account. As it is only accessible on the local machine, it is
+                  unencrypted. The standard socket names are
+                  <literal>/var/run/libvirt/libvirt-sock</literal> for full management
+                  capabilities and <literal>/var/run/libvirt/libvirt-sock-ro</literal>
+                  for a socket restricted to read only operations.
+                </para>
+              </entry>
+            </row>
+
+            <row>
+              <entry>
+                <para>ssh</para>
+              </entry>
+              <entry>
+                <para>
+                  The RPC data is tunneled over an SSH connection to the remote
+                  machine. It requires Netcat (nc) is installed on the remote machine
+                  and that libvirtd is running with the UNIX domain socket enabled.
+                  It is recommended that SSH be configured to not require password
+                  prompts to the client application. For example, if using SSH public
+                  key authentication it is recommended an ssh-agent by run to cache
+                  key credentials. GSSAPI is another useful authentication mode for
+                  the SSH transport allowing use of a pre-initialized Keberos credential
+                  cache.
+                </para>
+              </entry>
+            </row>
+
+            <row>
+              <entry>
+                <para>ext</para>
+              </entry>
+              <entry>
+                <para>
+                  Any external program that can make a connection to the remote
+                  machine by means that are outside the scope of libvirt. If
+                  none of the built-in data transports are satisfactory, this
+                  allows an application to provide a helper program to proxy
+                  RPC data over a custom channel.
+                </para>
+              </entry>
+            </row>
+
+          </tbody>
+        </tgroup>
+      </table>
+
+    </section>
+
+    <section id="Application_Development_Guide-Architecture-Authentication">
+      <title>Authentication schemes</title>
+
+      <para>
+        To cope with the wide variety of deployment environments, the libvirt
+        RPC service supports a number of authentication schemes on its data
+        transports, with industry standard encryption and authentication
+        capabilities. The choice of authentication scheme is configured by
+        the administrator in the <literal>/etc/libvirt/libvirtd.conf</literal>
+        file.
+      </para>
+
+      <table id='authentications' frame='all'>
+        <title>Schemes</title>
+        <tgroup cols='2' align='left' colsep='1' rowsep='1'>
+          <colspec colname='c1' />
+          <colspec colname='c2' />
+          <thead>
+            <row>
+              <entry><para>Scheme</para></entry>
+              <entry><para>Description</para></entry>
+            </row>
+          </thead>
+          <tbody>
+            <row>
+              <entry>
+                <para>sasl</para>
+              </entry>
+              <entry>
+                <para>
+                  SASL is a industry standard for pluggable authentication
+                  mechanisms. Each plug-in has a wide variety of capabilities
+                  and discussion of their merits is outside the scope of
+                  this document. For the <literal>tls</literal> data transport
+                  there is a wide choice of plug-ins, since TLS is providing
+                  data encryption for the network channel. For the
+                  <literal>tcp</literal> data transport, libvirt will refuse
+                  to use any plug-in which does not support data encryption.
+                  This effectively limits the choice to GSSAPI/Kerberos.
+                  SASL can optionally be enabled on the UNIX domain socket
+                  data transport if strong authentication of local users is
+                  required.
+                </para>
+              </entry>
+            </row>
+            <row>
+              <entry>
+                <para>polkit</para>
+              </entry>
+              <entry>
+                <para>
+                  PolicyKit is an authentication scheme suitable for local
+                  desktop virtualization deployments, for use only on the
+                  UNIX domain socket data transport. It enables the libvirtd
+                  daemon to validate that the client application is running
+                  within the local X desktop session. It can be configured
+                  to allow access to a logged in user automatically, or
+                  prompt them to enter their own password, or the superuser
+                  (root) password.
+                </para>
+              </entry>
+            </row>
+
+            <row>
+              <entry>
+                <para>x509</para>
+              </entry>
+              <entry>
+                <para>
+                  Although not strictly an authentication scheme, the TLS
+                  data transport can be configured to mandate the use of
+                  client x509 certificates. The server can then whitelist
+                  the client distinguished names to control access.
+                </para>
+              </entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table>
+
+    </section>
+
+    <section id="Application_Development_Guide-Architecture-Remote_URIs">
+      <title>Remote URIs</title>
+
+      <para>
+        Remote URIs have the general form ("[...]" meaning an optional part):
+      </para>
+
+      <screen>
+	driver[+transport]://[username@][hostname][:port]/[path][?extraparameters]
+      </screen>
+
+      <para>
+	A detailed description of each component now follows
+      </para>
+
+      <table id='uricomponents' frame='all'>
+	<title>URI components</title>
+	<tgroup cols='2' align='left' colsep='1' rowsep='1'>
+	  <colspec colname='c1' />
+	  <colspec colname='c2' />
+	  <thead>
+	    <row>
+              <entry><para>Component</para></entry>
+              <entry><para>Description</para></entry>
+	    </row>
+	  </thead>
+	  <tbody>
+	    <row>
+              <entry>
+		<para>driver</para>
+              </entry>
+              <entry>
+		<para>
+		  The name of the libvirt hypervisor driver to connect
+		  to. This is the same as that used in a local URI. Some
+		  examples are <literal>xen</literal>, <literal>qemu</literal>,
+		  <literal>lxc</literal>, <literal>openvz</literal>, and
+		  <literal>test</literal>. As a special case, the psuedo
+		  driver name <literal>remote</literal> can be used, which
+		  will cause the remote daemon to probe for an active
+		  hypervisor and pick one to use. As a general rule if the
+		  application knows what hypervisor it wants, it should
+		  always specify the explicit driver name and not rely
+		  on automatic probing.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>transport</para>
+              </entry>
+              <entry>
+		<para>
+		  The name of one of the data transports described earlier
+		  in this section. Possible values include
+		  <literal>tls</literal>, <literal>tcp</literal>,
+		  <literal>unix</literal>, <literal>ssh</literal> and
+		  <literal>ext</literal>. If omitted, it will default to
+		  <literal>tls</literal> if a hostname is provided, or
+		  <literal>unix</literal> if no hostname is provided.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>username</para>
+              </entry>
+              <entry>
+		<para>
+		  When using the SSH data transport this allows choice of
+		  a username that differs from the client's current login
+		  name.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>hostname</para>
+              </entry>
+              <entry>
+		<para>
+		  The fully qualified hostname of the remote machine.
+		  If using TLS with x509 certificates, or SASL with
+		  the GSSAPI/Keberos plug-in, it is critical that this
+		  hostname match the hostname used in the server's
+		  x509 certificates / Kerberos principle. Mis-matched
+		  hostnames will guarantee authentication failures.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>port</para>
+              </entry>
+              <entry>
+		<para>
+		  Rarely needed, unless SSH or libvirtd has been configured
+		  to run on a non-standard TCP port. Defaults to <literal>22</literal>
+		  for the SSH data transport, <literal>16509</literal> for the
+		  TCP data transport and <literal>16514</literal> for the TLS
+		  data transport.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>path</para>
+              </entry>
+              <entry>
+		<para>
+		  The path should be the same path used for the hypervisor
+		  driver's local URIs. For Xen, this is always just
+		  <literal>/</literal>, while for QEMU this would be
+		  <literal>/system</literal>.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>extraparameters</para>
+              </entry>
+              <entry>
+		<para>
+		  The URI query parameters provide the mean to fine tune
+		  some aspects of the remote connection, and are discussed
+		  in depth in the next section.
+		</para>
+              </entry>
+	    </row>
+	  </tbody>
+	</tgroup>
+      </table>
+
+
+      <para>
+	Based on the information described here and with reference to the
+	hypervisor specific URIs earlier in this document, it is now possible
+	to illustrate some example remote access URIs.
+      </para>
+
+      <blockquote>
+	<para>
+	  Connect to a remote Xen hypervisor on host <replaceable>node.example.com</replaceable>
+	  using ssh tunneled data transport and ssh username <replaceable>root</replaceable>:
+	  <literal>xen+ssh://root@node.example.com/</literal>
+	</para>
+	<para>
+	  Connect to a remote QEMU hypervisor on host <replaceable>node.example.com</replaceable>
+	  using TLS with x509 certificates: <literal>qemu://node.example.com/system</literal>
+	</para>
+	<para>
+	  Connect to a remote Xen hypervisor on host <replaceable>node.example.com</replaceable>
+	  using TLS, skipping verification of the server's x509 certificate (NB: this is compromising
+	  your security): <literal>xen://node.example.com/?no_verify=1</literal>
+	</para>
+	<para>
+	  Connect to the local QEMU instances over a non-standard Unix socket (the full path to
+	  the Unix socket is supplied explicitly in this case):
+	  <literal>qemu+unix:///system?socket=/opt/libvirt/run/libvirt/libvirt-sock</literal>
+	</para>
+	<para>
+	  Connect to a libvirtd daemon offering unencrypted TCP/IP connections on an alternative
+	  TCP port 5000 and use the test driver with default configuration:
+	  <literal>test+tcp://node.example.com:5000/default</literal>
+	</para>
+      </blockquote>
+
+      <para>
+	For further information on local URIs, refer to <xref linkend="Application_Development_Guide-Connections-URI_Formats"/>
+      </para>
+
+      <formalpara>
+	<title>Extra parameters</title>
+	
+	<para>Extra parameters can be added to remote URIs as part of the query string (the part following "?"). Remote URIs understand the extra parameters shown below. Any others are passed unmodified through to the backend. Note that parameter values must be URI-escaped. Refer to <ulink url="http://xmlsoft.org/html/libxml-uri.html#xmlURIEscapeStr"/> for more information.
+	</para>
+      </formalpara>
+
+      <table id='remote_URI' frame='none'><title>Extra parameters for remote URIs</title>
+	<tgroup cols='3' align='left' colsep='1' rowsep='1'>
+	  <colspec colname='c1' colwidth="1"/>
+	  <colspec colname='c2' colwidth="1"/>
+	  <colspec colname='c3' colwidth="3"/>
+	  <thead>
+	    <row>
+              <entry><para><emphasis role="bold">Name</emphasis></para></entry>
+              <entry><para><emphasis role="bold">Transports</emphasis></para></entry>
+              <entry><para><emphasis role="bold">Description</emphasis></para></entry>
+	    </row>
+	  </thead>
+	  <tbody>
+	    <row>
+              <entry><para><literal>name</literal></para></entry>
+              <entry><para><replaceable>any transport</replaceable></para></entry>
+              <entry>
+		<para>The local hypervisor URI passed to the remote virConnectOpen function. This URI is
+		  normally formed by removing transport, hostname, port number, username and extra
+		  parameters from the remote URI, but in certain very complex cases it may be necessary
+		  to supply the name explicitly. Example: <literal>name=qemu:///system</literal>
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry><para><literal>command</literal></para></entry>
+              <entry><para>ssh, ext</para></entry>
+              <entry>
+		<para>
+		  The external command. For ext transport this is required. For ssh the default
+		  is ssh. The PATH is searched for the command. Example: <literal>command=/opt/openssh/bin/ssh</literal>
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry><para><application>socket</application></para></entry>
+              <entry>
+		<para>unix, ssh</para>
+              </entry>
+              <entry>
+		<para>
+		  The external command. For ext transport this is required. For ssh
+		  the default is <literal>ssh</literal>. The PATH is searched for
+		  the command. Example: <literal>socket=/opt/libvirt/run/libvirt/libvirt-sock</literal></para>
+              </entry>
+	    </row>
+	    <row>
+              <entry><para><application>netcat</application></para></entry>
+              <entry>
+		<para>ssh</para>
+              </entry>
+              <entry>
+		<para>The name of the netcat command on the remote machine. The default
+		  is nc. For ssh transport, libvirt constructs an ssh command which looks like:
+		  <screen>
+		    command -p port [-l username] hostname netcat -U socket
+		  </screen>
+		  Where port, username, hostname can be specified as part of the remote URI,
+		  and command, netcat and socket come from extra parameters (or sensible
+		  defaults). Example: <literal>netcat=/opt/netcat/bin/nc</literal>
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry><para><application>no_verify</application></para></entry>
+              <entry>
+		<para>tls</para>
+              </entry>
+              <entry>
+		<para>Client checks of the server's certificate are disable if a non-zero value is set. Note that to disable server checks of the client's certificate or IP address you must change the libvirtd configuration <!--(refer to <xref linkend=""/>)-->. Example: <literal>no_verify=1</literal>
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry><para><application>no_tty</application></para></entry>
+              <entry>
+		<para>ssh</para>
+              </entry>
+              <entry>
+		<para>If set to a non-zero value, this stops ssh from asking for a password if it cannot log in to the remote machine automatically (For example, when using a ssh-agent). Use this when you don't have access to a terminal - for example in graphical programs which use libvirt. Example: <literal>no_tty=1</literal>
+		</para>
+              </entry>
+	    </row>
+	  </tbody>
+	</tgroup>
+      </table>
+
+    </section>
+
+  </section>
+
+  <section id="Application_Development_Guide-Architecture-TLS_Cert">
+    <title>Generating TLS certificates</title>
+
+    <para>
+      Libvirt supports TLS certificates for verifying the identity of the server and clients. There are two distinct checks involved:
+    </para>
+
+    <orderedlist>
+      <listitem>
+        <para>
+          The client checks that it is connecting to the correct server by matching the certificate the server sends with the server's hostname. This check can be disabled by adding <literal>?no_verify=1</literal>. Refer to <xref linkend="remote_URI"/> for details.
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          The server checks to ensure that only allowed clients are connected. This is performed using either:
+        </para>
+
+        <orderedlist>
+          <listitem>
+            <para>
+              The client's IP address; or
+            </para>
+          </listitem>
+          <listitem>
+            <para>
+              The client's IP address and the client's certificate.
+            </para>
+          </listitem>
+        </orderedlist>
+
+        <para>
+          Server checking may be enabled or disabled using the libvirtd.conf file.
+        </para>
+
+      </listitem>
+    </orderedlist>
+
+    <para>
+      For full certificate checking you will need to have certificates issued by a recognized Certificate Authority (CA) for your server(s) and all clients. To avoid the expense of obtaining certificates from a commercial CA, there is the option to set up your own CA and tell your server(s) and clients to trust certificates issues by your own CA. To do this, follow the instructions contained in the next section.
+    </para>
+
+    <para>
+      Be aware that the default configuration for libvirtd.conf allows any client to connect, provided that they have a valid certificate issued by the CA for their own IP address. This setting may need to be made more or less permissive, dependent upon your requirements.
+    </para>
+
+    <section id="Application_Development_Guide-TLS_Cert-Public_Key">
+      <title>Public Key Infrastructure setup</title>
+
+      <para>Placeholder</para>
+
+      <table id='public_key' frame='none'><title>Public Key setup</title>
+        <tgroup cols='4' align='left' colsep='1' rowsep='1'>
+          <colspec colname='c1' colwidth="1"/>
+          <colspec colname='c2' colwidth="1"/>
+          <colspec colname='c3' colwidth="3"/>
+          <colspec colname='c4' colwidth="3"/>
+          <thead>
+            <row>
+              <entry><para><emphasis role="bold">Location</emphasis></para></entry>
+              <entry><para><emphasis role="bold">Machine</emphasis></para></entry>
+              <entry><para><emphasis role="bold">Description</emphasis></para></entry>
+              <entry><para><emphasis role="bold">Required fields</emphasis></para></entry>
+            </row>
+          </thead>
+          <tbody>
+            <row>
+              <entry><para><literal>/etc/pki/CA/cacert.pem</literal></para></entry>
+              <entry><para>Installed on all clients and servers</para></entry>
+              <entry><para>CA's certificate</para></entry>
+              <entry><para>n/a</para></entry>
+            </row>
+            <row>
+              <entry><para><literal>/etc/pki/libvirt/private/serverkey.pem</literal></para></entry>
+              <entry><para>Installed on the server</para></entry>
+              <entry><para>Server's private key</para></entry>
+              <entry><para>n/a</para></entry>
+            </row>
+            <row>
+              <entry><para><literal>/etc/pki/libvirt/ servercert.pem</literal></para></entry>
+              <entry><para>Installed on the server</para></entry>
+              <entry><para>Server's certificate signed by the CA</para></entry>
+              <entry><para>CommonName (CN) must be the hostname of the server as it is seen by clients. </para></entry>
+            </row>
+            <row>
+              <entry><para><literal>/etc/pki/libvirt/private/clientkey.pem</literal></para></entry>
+              <entry><para>Installed on the client</para></entry>
+              <entry><para>Client's private key.</para></entry>
+              <entry><para>n/a</para></entry>
+            </row>
+            <row>
+              <entry><para><literal>/etc/pki/CA/cacert.pem</literal></para></entry>
+              <entry><para>Installed on the client</para></entry>
+              <entry><para>Client's certificate signed by the CA</para></entry>
+              <entry><para>Distinguished Name (DN) can be checked against an access control list (<literal>tls_allowed_dn_list</literal>).</para></entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table>
+
+    </section>
+
+  </section>
+
+</chapter>

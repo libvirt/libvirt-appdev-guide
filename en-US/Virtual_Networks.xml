@@ -1,0 +1,39 @@
+<?xml version='1.0'?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+
+<chapter id="Application_Development_Guide-Virtual_Networks">
+  <title>Virtual Networks</title>
+  <para>
+    TBD
+  </para>
+
+  <section id="Application_Development_Guide-Virtual_Networks-Overview">
+    <title>Overview</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Virtual_Networks-Listing">
+    <title>Listing networks</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Virtual_Networks-Lifecycle">
+    <title>Lifecycle control</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Virtual_Networks-Config">
+    <title>Network configuration</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+</chapter>

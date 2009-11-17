@@ -1,0 +1,109 @@
+<?xml version='1.0'?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+	  ]>
+
+<chapter id="Application_Development_Guide-Introduction">
+  <title>Introduction</title>
+
+  <para>
+    Libvirt is a hypervisor-independent virtualization API that is able to
+    interact with the virtualization capabilities of a range of operating
+    systems.
+  </para>
+
+  <para>
+    This chapter provides an introduction to libvirt and defines common terms
+    that will be used throughout the guide.
+  </para>
+
+  <section id="Application_Development_Guide-Introduction-Overview">
+    <title>Overview</title>
+    <para>
+      Libvirt provides a common, generic and stable layer to securely manage
+      domains on a node. As nodes may be remotely located, libvirt provides
+      all APIs required to provision, create, modify, monitor, control, migrate
+      and stop the domains, within the limits of hypervisor support for these
+      operations. Although multiple nodes may be accessed with libvirt
+      simultaneously, the APIs are limited to single node operations.
+    </para>
+
+    <para>
+      Libvirt is designed to work across multiple virtualization environments,
+      which means that more common capabilities are provided as APIs. Due to
+      this, certain specific capabilities may not be provided. For example,
+      it does not provide high level virtualization policies or multi-node
+      management features such as load balancing. However, API stability
+      ensures that these features can be implemented on top of libvirt. To
+      maintain this level of stability, libvirt seeks to isolate applications
+      from the frequent changes expected at the lower level of the virtualization
+      framework.
+    </para>
+
+    <para>
+      Libvirt is intended as a building block for higher level management tools
+      and applications focusing on virtualization of a single node, with the
+      only exception being domain migration between multiple node capabilities.
+      It provides APIs to enumerate, monitor and use the resources available
+      on the managed node, including CPUs, memory, storage, networking and
+      Non-Uniform Memory Access (NUMA) partitions. Although a management node
+      can be located on a separate physical machine to the management program,
+      this should only be done using secure protocols.
+    </para>
+
+  </section>
+
+  <section id="Application_Development_Guide-Introduction-Glossary">
+    <title>Glossary of terms</title>
+
+    <para>
+      To avoid ambiguity regarding terms and concepts used in this guide,
+      refer to the following descriptions.
+    </para>
+
+    <table id='terms' frame='none'><title>Terminology</title>
+      <tgroup cols='2' align='left' colsep='1' rowsep='1'>
+        <colspec colname='c1' colwidth="20%"/>
+        <colspec colname='c2' colwidth="80%"/>
+        <thead>
+          <row>
+            <entry><para><emphasis role="bold">Term</emphasis></para></entry>
+            <entry><para><emphasis role="bold">Description</emphasis></para></entry>
+
+          </row>
+        </thead>
+        <tbody>
+          <row>
+            <entry><para><application>Domain</application></para></entry>
+            <entry>
+              <para>
+		An instance of an operating system (or subsystem in the case of
+		container virtualization) running on a virtualized machine provided
+		by the hypervisor.
+	      </para>
+            </entry>
+          </row>
+          <row>
+            <entry><para><application>Hypervisor</application></para></entry>
+            <entry>
+              <para>
+		A layer of software allowing virtualization of a node in a set
+		of virtual machines, which may have different configurations to the
+		node itself.
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry><para><application>Node</application></para></entry>
+            <entry>
+              <para>A single physical machine.</para>
+            </entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </table>
+
+
+  </section>
+
+</chapter>
+

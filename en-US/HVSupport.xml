@@ -1,0 +1,12 @@
+<appendix id="Installation_Guide-HVSupport">
+  <title>Driver Support Matrix</title>
+
+  <para>
+    This matrix lists which libvirt calls work on which libvirt drivers / hypervisors and which version the API appeared in.
+  </para>
+
+  <para>
+    As this information changes frequently, it is recommended that you check for any updates at <ulink url="http://libvirt.org/hvsupport.html"/>.
+  </para>
+
+</appendix>

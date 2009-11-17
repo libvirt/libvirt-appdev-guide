@@ -1,0 +1,40 @@
+<?xml version='1.0'?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+	  ]>
+
+<chapter id="Application_Development_Guide-Network_Interfaces">
+  <title>Network Interfaces</title>
+  <para>
+    <emphasis>Currently in development</emphasis>
+  </para>
+
+  <section id="Application_Development_Guide-Network_Interfaces-Overview">
+    <title>Overview</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Network_Interfaces-Listing">
+    <title>Listing devices</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Network_Interfaces-Config">
+    <title>Device configuration</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Network_Interfaces-Create">
+    <title>Creating devices</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+</chapter>
+

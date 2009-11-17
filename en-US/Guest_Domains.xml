@@ -1,0 +1,1219 @@
+<?xml version='1.0'?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+	  ]>
+
+<chapter id="Application_Development_Guide-Guest_Domains">
+  <title>Guest Domains</title>
+  <section id="Application_Development_Guide-Guest_Domains-Overview">
+    <title>Domain overview</title>
+
+    <para>
+      A guest domain can refer to either a running virtual machine or a configuration
+      which can be used to launch a virtual machine. The connection object provides APIs
+      to enumerate the guest domains, create new guest domains and manage existing domains.
+      A guest domain is represented with the <literal>virDomainPtr</literal> object and
+      has a number of unique identifiers:
+    </para>
+
+    <itemizedlist>
+      <title>Unique identifiers</title>
+      <listitem>
+        <para>
+          <application>ID</application>: positive integer, unique amongst running guest
+	  domains on a single host. An inactive domain does not have an ID. If the host
+	  OS is a virtual domain, it is given a ID of zero by default. For example, with
+	  the Xen hypervisor, <literal>Dom0</literal> indicates a guest domain. Other
+	  domain IDs will be allocated starting at 1, and incrementing each time a new
+	  domain starts. Typically domain IDs will not be re-used until the entire ID
+	  space wraps around. The domain ID space is at least 16 bits in size, but often
+	  extends to 32 bits.
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          <application>name</application>: short string, unique amongst all guest domains on a single host,
+          both running and inactive. For maximum portability between hypervisors
+          applications should only rely on being able to use the characters
+          <literal>a-Z,0-9,-,_</literal> in names. Many hypervisors will store
+          inactive domain configurations as files on disk, based on the domain
+          name.
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          <application>UUID</application>: 16 unsigned bytes, guaranteed to be unique amongst all guest
+          domains on any host. RFC 4122 defines the format for UUIDs and provides
+          a recommended algorithm for generating UUIDs with guaranteed uniqueness.
+          If the host OS is itself a virtual domain, then by convention it
+          will be given a UUID of all zeros. This is the case with the Xen
+          hypervisor, where <literal>Dom0</literal> is a guest domain itself.
+        </para>
+      </listitem>
+    </itemizedlist>
+
+    <para>
+      A guest domain may be transient, or persistent. A transient guest domain
+      can only be managed while it is running on the host and, when powered off,
+      all trace of it will disappear. A persistent guest domain has its configuration
+      maintained in a data store on the host by the hypervisor, in an implementation
+      defined format. Thus when a persistent guest is powered off, it is still
+      possible to manage its inactive config. A transient guest can be turned into
+      a persistent guest on the fly by defining a configuration for it.
+    </para>
+
+    <para>
+      Once an application has a unique identifier for a domain, it will
+      often want to obtain the corresponding <literal>virDomainPtr</literal>
+      object. There are three, imaginatively named, methods to do lookup
+      existing domains, <literal>virDomainLookupByID</literal>,
+      <literal>virDomainLookupByName</literal> and
+      <literal>virDomainLookupByUUID</literal>. Each of these takes
+      a connection object as first parameter, and the domain identifier
+      as the other. They will return NULL if no matching domain exists.
+      The connection's error object can be queried to find specific
+      details of the error if required.
+    </para>
+
+    <example>
+      <title>Fetching a domain object from an ID</title>
+      <programlisting>
+        int domainID = 6;
+        virDomainPtr dom;
+
+        dom = virDomainLookupByID(conn, domainID);
+      </programlisting>
+    </example>
+
+    <example>
+      <title>Fetching a domain object from an name</title>
+      <programlisting>
+        int domainName = "someguest";
+        virDomainPtr dom;
+
+        dom = virDomainLookupByName(conn, domainName);
+      </programlisting>
+    </example>
+
+    <example>
+      <title>Fetching a domain object from an UUID</title>
+      <programlisting>
+        char *domainUUID = "00311636-7767-71d2-e94a-26e7b8bad250";
+        virDomainPtr dom;
+
+        dom = virDomainLookupByUUIDString(conn, domainUUID);
+      </programlisting>
+    </example>
+
+    <para>
+      For convenience of this document, the UUID example used the
+      printable format of UUID. There is an equivalent method
+      which accepts the raw bytes <literal>unsigned char[]</literal>
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Guest_Domains-Listing">
+    <title>Listing domains</title>
+
+    <para>
+      The libvirt API exposes two lists of domains, the first
+      contains running domains, while the second contains
+      inactive, persistent domains. The lists are intended to
+      be non-overlapping, exclusive sets, though there is always
+      a small possibility that a domain can stop or start in
+      between the querying of each set. The events API described
+      later in this section provides a way to track all lifecycle
+      changes avoiding this potential race condition.
+    </para>
+
+    <para>
+      The API for listing active domains, returns a list of domain
+      IDs. Every running domain has a positive integer ID, uniquely
+      identifying it amongst all running domains on the host. The
+      API for listing active domains, <literal>virConnectListDomains</literal>,
+      requires the caller to pass in a pre-allocated <literal>int</literal>
+      array which will be filled in domain IDs. The return value will
+      be -1 upon error, or the total number of array elements filled.
+      To determine how large to make the ID array, the application can
+      use the API call <literal>virConnectNumOfDomains</literal>.
+      Putting these two calls together, a fragment of code which
+      prints a list running domain IDs would be
+    </para>
+
+    <example>
+      <title>Listing active domains</title>
+      <programlisting>
+        int i;
+        int numDomains;
+        int *activeDomains;
+
+        numDomains = virConnectNumOfDomains(conn);
+
+        activeDomains = malloc(sizeof(int) * numDomains);
+        numDomains = virConnectListDomains(conn, activeDomains, numDomains);
+
+        printf("Active domain IDs:\n");
+        for (i = 0 ; i &lt; numDomains ; i++) {
+        printf("  %d\n", activeDomains[i]);
+        }
+        free(activeDomains);
+      </programlisting>
+      <!-- XXX we should include cross-ref to equivalent
+           code snippet in appendix for python, perl, java -->
+    </example>
+
+
+    <para>
+      In addition to the running domains, there may be some persistent
+      inactive domain configurations stored on the host. Since an inactive
+      domain does not have any ID identifier, the listing of inactive
+      domains is exposed as a list of name strings. In a similar style
+      to the API just discussed, the <literal>virConnectListDefinedDomains</literal>
+      API requires the caller to provide a pre-allocated
+      <literal>char *</literal>  array which will be filled with domain
+      name strings. The return value will be -1 upon error, or the total
+      number of array elements filled with names. It is the caller's
+      responsibility to free the memory associated with each returned
+      name. As you might expect, there is also a <literal>virConnectNumOfDefinedDomains</literal>
+      API to determine how many names are known. Putting these calls
+      together, a fragment of code which prints a list of inactive
+      persistent domain names would be:
+    </para>
+
+    <example>
+      <title>Listing inactive domains</title>
+      <programlisting>
+        int i;
+        int numDomains;
+        char **inactiveDomains;
+
+        numDomains = virConnectNumOfDefinedDomains(conn);
+
+        inactiveDomains = malloc(sizeof(char *) * numDomains);
+        numDomains = virConnectListDomains(conn, inactiveDomains, numDomains);
+
+        printf("Inactive domain names:\n");
+        for (i = 0 ; i &lt; numDomains ; i++) {
+        printf("  %s\n", inactiveDomains[i]);
+        free(inactiveDomains[i]);
+        }
+        free(inactiveDomains);
+      </programlisting>
+      <!-- XXX we should include cross-ref to equivalent
+           code snippet in appendix for python, perl, java -->
+    </example>
+
+    <para>
+      The APIs for listing domains do not directly return the full
+      <literal>virDomainPtr</literal> objects, since this may
+      incur undue performance penalty for applications which wish
+      to query the list of domains on a frequent basis. Given a
+      domain ID or name, obtaining a full <literal>virDomainPtr</literal>
+      object is a straightforward matter of calling one of the
+      <literal>virDomainLookupBy{Name,ID}</literal> methods. So
+      an example which obtained a <literal>virDomainPtr</literal>
+      object for every domain, both active and inactive, would
+      be:
+    </para>
+
+    <example>
+      <title>Fetching all domain objects</title>
+      <programlisting>
+        virDomainPtr *allDomains;
+        int numDomains;
+        int numActiveDomains, numInactiveDomains;
+        char *inactiveDomains;
+        int *activeDomains;
+
+        numActiveDomains = virConnectNumOfDomains(conn);
+        numInactiveDomains = virConnectNumOfDefinedDomains(conn);
+
+        allDomains = malloc(sizeof(virDomainPtr) *
+        numActiveDomains + numInactiveDomains);
+        inactiveDomains = malloc(sizeof(char *) * numDomains);
+        activeDomains = malloc(sizeof(int) * numDomains);
+
+        numActiveDomains = virConnectListDomains(conn,
+        activeDomains,
+        numActiveDomains);
+        numInactiveDomains = virConnectListDomains(conn,
+        inactiveDomains,
+        numInactiveDomains);
+
+        for (i = 0 ; i &lt; numActiveDomains ; i++) {
+        allDomains[numDomains]
+        = virDomainLookupByID(activeDomains[i]);
+        numDomains++
+        }
+
+        for (i = 0 ; i &lt; numInactiveDomains ; i++) {
+        allDomains[numDomains]
+        = virDomainLookupByName(inactiveDomains[i]);
+        free(inactiveDomains[i]);
+        numDomains++
+        }
+        free(activeDomains);
+        free(inactiveDomains);
+      </programlisting>
+    </example>
+  </section>
+
+  <section id="Application_Development_Guide-Guest_Domains-Lifecycle">
+    <title>Lifecycle control</title>
+
+    <para>
+      TBD
+
+    </para>
+
+    <section id="Application_Development_Guide-Lifecycle-Provisioning">
+      <title>Provisioning</title>
+
+      <para>
+	Provisioning refers to the task of creating new guest domains,
+	typically using some form of operating system installation
+	media. There are a wide variety of ways in which a guest can
+	be provisioned, but the choices available will vary according
+	to the hypervisor and type of guest domain being provisioned.
+	It is not uncommon for an application to support several
+	different provisioning methods.
+      </para>
+
+      <section id="Application_Development_Guide-Lifecycle-Provisioning-apis">
+        <title>APIs for provisioning</title>
+
+	<para>
+	  There are up to three APIs involved in provisioning guests.
+	  The <literal>virDomainCreateXML</literal> command will create
+	  and immediately boot a new transient guest domain. When this
+	  guest domain shuts down, all trace of it will disappear. The
+	  <literal>virDomainDefineXML</literal> command will store the
+	  configuration for a persistent guest domain. The <literal>virDomainCreate</literal>
+	  command will boot a previously defined guest domain
+	  from its persistent configuration. One important thing to
+	  note, is that the <literal>virDomainDefineXML</literal> command
+	  can be used to turn a previously booted transient guest domain,
+	  into a persistent domain. This can be useful for some provisioning
+	  scenarios that will be illustrated later.
+	</para>
+
+	<section id="Application_Development_Guide-Lifecycle-Provisioning-apis-transient">
+	  <title>Booting a transient guest domain</title>
+
+	  <para>
+	    To boot a transient guest domain, simply requires a connection to
+	    libvirt and a string containing the XML document describing the
+	    required guest configuration. The following example assumes that
+	    <literal>conn</literal> is an instance of the <literal>virConnectPtr</literal>
+	    object.
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+virDomainPtr dom;
+const char *xmlconfig = "<domain>........</domain>";
+
+dom = virConnectCreateXML(conn, xmlconfig, 0);
+
+if (!dom) {
+    fprintf(stderr, "Domain creation failed");
+    return;
+}
+
+fprintf(stderr, "Guest %s has booted", virDomainName(dom));
+virDomainFree(dom);
+]]>
+	  </programlisting>
+
+	  <para>
+	    If the domain creation attempt succeeded, then the returned
+	    <literal>virDomainPtr</literal> will be a handle to the guest
+	    domain. This must be released later when no longer needed by
+	    using the <literal>virDomainFree</literal> method. Although
+	    the domain was booted successfully, this does not guarantee
+	    that the domain is still running. It is entirely possible for
+	    the guest domain to crash, in which case attempts to use the
+	    returned <literal>virDomainPtr</literal> object will generate
+	    an error, since transient guests cease to exist when they
+	    shutdown (whether a planned shutdown, or a crash). To cope
+	    with this scenario requires use of a persistent guest.
+	  </para>
+
+	</section>
+
+	<section id="Application_Development_Guide-Lifecycle-Provisioning-apis-persistent">
+	  <title>Defining and booting a persistent guest domain</title>
+
+	  <para>
+	    Before a persistent domain can be booted, it must have its configuration
+	    defined. This again requires a connection to libvirt and a string containing
+	    the XML document describing the required guest configuration. The
+	    <literal>virDomainPtr</literal> object obtained from defining the guest,
+	    can then be used to boot it. The following example assumes that
+	    <literal>conn</literal> is an instance of the <literal>virConnectPtr</literal>
+	    object.
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+virDomainPtr dom;
+const char *xmlconfig = "<domain>........</domain>";
+
+dom = virConnectDefineXML(conn, xmlconfig, 0);
+
+if (!dom) {
+    fprintf(stderr, "Domain definition failed");
+    return;
+}
+
+if (virDomainCreate(dom) < 0) {
+    virDomainFree(dom);
+    fprintf(stderr, "Cannot boot guest");
+    return;
+}
+
+fprintf(stderr, "Guest %s has booted", virDomainName(dom));
+virDomainFree(dom);
+]]>
+	  </programlisting>
+
+	</section>
+
+      </section>
+
+      <section id="Application_Development_Guide-Lifecycle-Provisioning-config">
+        <title>New guest provisioning techniques</title>
+
+	<para>
+	  This section will first illustrate two configurations that
+	  allow for a provisioning approach that is comparable to those
+	  used for physical machines. It then outlines a third option
+	  which is specific to virtualized hardware, but has some
+	  interesting benefits. For the purposes of illustration, the
+	  examples that follow will use a XML configuration that sets
+	  up a KVM fully virtualized guest, with a single disk and
+	  network interface and a video card using VNC for display.
+	</para>
+
+	<programlisting>
+	  <![CDATA[
+<domain type='kvm'>
+  <name>demo</name>
+  <uuid>c7a5fdbd-cdaf-9455-926a-d65c16db1809</uuid>
+  <memory>500000</memory>
+  <vcpu>1</vcpu>
+  .... the <os> block will vary per approach ...
+    <clock offset='utc'/>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>destroy</on_crash>
+    <devices>
+      <emulator>/usr/bin/qemu-kvm</emulator>
+      <disk type='file' device='disk'>
+	<source file='/var/lib/libvirt/images/demo.img'/>
+	<driver name='qemu' type='raw'/>
+	<target dev='hda'/>
+      </disk>
+      <interface type='bridge'>
+	<mac address='52:54:00:d8:65:c9'/>
+	<source bridge='br0'/>
+      </interface>
+      <input type='mouse' bus='ps2'/>
+      <graphics type='vnc' port='-1' listen='127.0.0.1'/>
+    </devices>
+  </domain>
+  ]]>
+	</programlisting>
+
+	<para>
+	  TIP: Be careful in the choice of initial memory allocation, since
+	  too low a value may cause mysterious crashes and installation
+	  failures. Some operating systems need as much as 600 MB of memory
+	  for initial installation, though this can often be reduced
+	  post-install.
+	</para>
+
+        <section id="Application_Development_Guide-Lifecycle-Provisioning-ISO">
+	  <title>CDROM/ISO image provisioning</title>
+
+	  <para>
+	    All full virtualization technologies have support for emulating
+	    a CDROM device in a guest domain, making this an obvious choice
+	    for provisioning new guest domains. It is, however, fairly rare
+	    to find a hypervisor which provides CDROM devices for paravirtualized
+	    guests.
+	  </para>
+
+	  <para>
+	    The first obvious change required to the XML configuration to
+	    support CDROM installation, is to add a CDROM device. A guest
+	    domains' CDROM device can be pointed to either a host CDROM
+	    device, or to a ISO image file. The next change is to determine
+	    what the BIOS boot order should be, with there being two
+	    possible options. If the hard disk is listed ahead of the
+	    CDROM device, then the CDROM media won't be booted unless
+	    the first boot sector on the hard disk is blank. If the
+	    CDROM device is listed ahead of the hard disk, then it will
+	    be necessary to alter the guest config after install to
+	    make it boot off the installed disk. While both can be made
+	    to work, the first option is easiest to implement.
+	  </para>
+
+	  <para>
+	    The guest configuration shown earlier would have the following
+	    XML chunk inserted:
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+<os>
+  <type arch='x86_64' machine='pc'>hvm</type>
+  <boot dev='hd'/>
+  <boot dev='cdrom'/>
+</os>
+]]>
+	  </programlisting>
+
+	  <para>
+	    NB, this assumes the hard disk boot sector is blank initially,
+	    so that the first boot attempt falls through to the CD-ROM drive.
+	    It will also need a CD-ROM drive device added
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+<disk type='file' device='cdrom'>
+  <source file='/var/lib/libvirt/images/rhel5-x86_64-dvd.iso'/>
+  <target dev='hdc' bus='ide'/>
+</disk>
+]]>
+	  </programlisting>
+
+	  <para>
+	    With the configuration determined, it is now possible
+	    to provision the guest. This is an easy process, simply
+	    requiring a persistent guest to be defined, and then
+	    booted.
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+const char *xml = "<domain>....</domain>";
+virDomainPtr dom;
+
+dom = virDomainDefineXML(conn, xml);
+if (!dom) {
+    fprintf(stderr, "Unable to define persistent guest configuration");
+    return;
+}
+
+if (virDomainCreate(dom) < 0) {
+    fprintf(stderr, "Unable to boot guest configuration");
+}
+]]>
+	  </programlisting>
+
+	  <para>
+	    If it was not possible to guarantee that the boot
+	    sector of the hard disk is blank, then provisioning
+	    would have been a two step process. First a transient
+	    guest would have been booted using CD-ROM drive as the
+	    primary boot device. Once that completed, then
+	    a persistent configuration for the guest would be
+	    defined to boot off the hard disk.
+	  </para>
+
+	</section>
+
+        <section id="Application_Development_Guide-Lifecycle-Provisioning-PXE">
+	  <title>PXE boot provisioning</title>
+
+	  <para>
+	    Some newer full virtualization technologies provide a BIOS that
+	    is able to use the PXE boot protocol to boot of the network. If
+	    an environment already has a PXE boot provisioning server deployed,
+	    this is a desirable method to use for guest domains.
+	  </para>
+
+	  <para>
+	    PXE booting a guest obviously requires that the guest has a
+	    network device configured. The LAN that this network card is
+	    attached to, also needs a PXE / TFTP server available.
+	    The next change is to determine
+	    what the BIOS boot order should be, with there being two
+	    possible options. If the hard disk is listed ahead of the
+	    network device, then the network card won't PXE boot unless
+	    the first boot sector on the hard disk is blank. If the
+	    network device is listed ahead of the hard disk, then it will
+	    be necessary to alter the guest config after install to
+	    make it boot off the installed disk. While both can be made
+	    to work, the first option is easiest to implement.
+	  </para>
+
+	  <para>
+	    The guest configuration shown earlier would have the following
+	    XML chunk inserted:
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+<os>
+  <type arch='x86_64' machine='pc'>hvm</type>
+  <boot dev='hd'/>
+  <boot dev='network'/>
+</os>
+]]>
+	  </programlisting>
+
+	  <para>
+	    NB, this assumes the hard disk boot sector is blank initially,
+	    so that the first boot attempt falls through to the NIC.
+	    With the configuration determined, it is now possible
+	    to provision the guest. This is an easy process, simply
+	    requiring a persistent guest to be defined, and then
+	    booted.
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+const char *xml = "<domain>....</domain>";
+virDomainPtr dom;
+
+dom = virDomainDefineXML(conn, xml);
+if (!dom) {
+    fprintf(stderr, "Unable to define persistent guest configuration");
+    return;
+}
+
+if (virDomainCreate(dom) < 0) {
+    fprintf(stderr, "Unable to boot guest configuration");
+}
+]]>
+	  </programlisting>
+
+	  <para>
+	    If it was not possible to guarantee that the boot
+	    sector of the hard disk is blank, then provisioning
+	    would have been a two step process. First a transient
+	    guest would have been booted using network as the
+	    primary boot device. Once that completed, then
+	    a persistent configuration for the guest would be
+	    defined to boot off the hard disk.
+	  </para>
+	</section>
+
+        <section id="Application_Development_Guide-Lifecycle-Provisioning-Kernel">
+	  <title>Direct kernel boot provisioning</title>
+
+	  <para>
+	    Paravirtualization technologies emulate a fairly restrictive
+	    set of hardware, often making it impossible to use the provisioning
+	    options just outlined. For such scenarios it is often possible to
+	    boot a new guest domain directly from an kernel and initrd image
+	    stored on the host file system. This has one interesting advantage,
+	    which is that it is possible to directly set kernel command line
+	    boot arguments, making it very easy to do fully automated
+	    installation. This advantage can be compelling enough that this
+	    technique is used even for fully virtualized guest domains with
+	    CD-ROM drive/PXE support.
+	  </para>
+
+	  <para>
+	    The one complication with direct kernel booting is that provisioning
+	    becomes a two step process. For the first step, it is necessary to
+	    configure the guest XML configuration to point to a kernel/initrd.
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+<os>
+  <type arch='x86_64' machine='pc'>hvm</type>
+  <kernel>/var/lib/libvirt/boot/f11-x86_64-vmlinuz</kernel>
+  <initrd>/var/lib/libvirt/boot/f11-x86_64-initrd.img</initrd>
+  <cmdline>method=http://download.fedoraproject.org/pub/fedora/linux/releases/11/x86_64/os console=ttyS0 console=tty</cmdline>
+</os>
+]]>
+	  </programlisting>
+
+	  <para>
+	    Notice how the kernel command line provides the URL of download
+	    site containing the distro install tree matching the kernel/initrd.
+	    This allows the installer to automatically download all its resources
+	    without prompting the user for install URL. It could also be used to
+	    provide a kickstart file for completely unattended installation.
+	    Finally, this command line also tells the kernel to activate both
+	    the first serial port and the VGA card as consoles, with the latter
+	    being the default. Having kernel messages duplicated on the serial
+	    port in this manner can be a useful debugging avenue. Of course
+	    valid command line arguments vary according to the particular kernel
+	    being booted. Consult the kernel vendor/distributor's documentation
+	    for valid options.
+	  </para>
+
+	  <para>
+	    The last XML configuration detail before starting the guest, is to
+	    change the 'on_reboot' element action to be 'destroy'. This ensures
+	    that when the guest installer finishes and requests a reboot, the
+	    guest is instead powered off. This allows the management application
+	    to change the configuration to make it boot off, just installed, the
+	    hard disk again. The provisioning process can be started now by
+	    creating a transient guest with the first XML configuration
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+const char *xml = "<domain>....</domain>";
+virDomainPtr dom;
+
+dom = virDomainCreateXML(conn, xml);
+if (!dom) {
+    fprintf(stderr, "Unable to boot transient guest configuration");
+    return;
+}
+]]>
+	  </programlisting>
+
+	  <para>
+	    Once this guest shuts down, the second phase of the provisioning
+	    process can be started. For this phase, the 'OS' element will
+	    have the kernel/initrd/cmdline elements removed, and replaced
+	    by either a reference to a host side bootloader, or a BIOS
+	    boot setup. The former is used for Xen paravirtualized guests,
+	    while the latter is used for fully virtualized guests.
+	  </para>
+
+	  <para>
+	    The phase 2 configuration for a Xen paravirtualized guest
+	    would thus look like:
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+<bootloader>/usr/bin/pygrub</bootloader>
+<os>
+  <type arch='x86_64' machine='pc'>xen</type>
+</os>
+]]>
+	  </programlisting>
+
+	  <para>
+	    while a fully-virtualized guest would use:
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+<bootloader>/usr/bin/pygrub</bootloader>
+<os>
+  <type arch='x86_64' machine='pc'>hvm</type>
+  <boot dev='hd'/>
+</os>
+]]>
+	  </programlisting>
+
+	  <para>
+	    With the second phase configuration determined, the guest can
+	    be recreated, this time using a persistent configuration
+	  </para>
+
+	  <programlisting>
+	    <![CDATA[
+const char *xml = "<domain>....</domain>";
+virDomainPtr dom;
+
+dom = virDomainCreateXML(conn, xml);
+if (!dom) {
+    fprintf(stderr, "Unable to define persistent guest configuration\n");
+    return;
+}
+
+if (virDomainCreate(dom) < 0) {
+    fprintf(stderr, "Unable to boot persistent guest\n");
+    return;
+}
+
+fprintf(stderr, "Guest provisoning complete, OS is running\n");
+]]>
+	  </programlisting>
+	</section>
+      </section>
+    </section>
+
+    <section id="Application_Development_Guide-Lifecycle-Save">
+      <title>Save / restore</title>
+
+      <para>
+        Save and restore refers to the process of taking a running guest
+	and saving its memory state to a file. At some time later, it
+	is possible to restore the guest to its original running state,
+	continuing execution where it left off.
+      </para>
+
+      <para>
+	It is important to note that the save/restore APIs only save the
+	memory state, no storage state is preserved. Thus when the guest
+	is restored, the underlying guest storage must be in exactly the
+	same state as it was when the guest was initially saved. For
+        basic usage this implies that a guest can only be restored once
+	from any given saved state image. To allow a guest to be restored
+	from the same saved state multiple times, the application must
+	also have taken a snapshot of the guest storage at time of saving,
+	and explicitly revert to this storage snapshot when restoring.
+	A future API enhancement in libvirt will allow for an automated
+	snapshot capability which saves memory and storage state in
+	one operation.
+      </para>
+
+      <para>
+	The save operation requires the fully qualified path to a file
+	in which the guest memory state will be saved. This filename
+	is in the hypervisor's file system, not the libvirt client
+	application's. There's no difference between the two if managing
+	a local hypervisor, but it is critically important if connecting
+	remotely to a hypervisor across the network. The example that
+	follows demonstrates saving a guest called 'demo-guest' to a
+	file. It checks to verify that the guest is running before
+	saving, though this is technically redundant since the
+	hypervisor driver will do such a check itself.
+      </para>
+
+      <programlisting>
+	<![CDATA[
+virDomainPtr dom;
+virDomainInfoPtr info;
+const char *filename = "/var/lib/libvirt/save/demo-guest.img";
+
+dom = virDomainLookupByName(conn, "demo-guest");
+if (!dom) {
+    fprintf(stderr, "Cannot find guest to be saved");
+    return;
+}
+
+if (virDomainGetInfo(dom, &amp;info) < 0) {
+    fprintf(stderr, "Cannot check guest state");
+    return;
+}
+
+if (info.state == VIR_DOMAIN_SHUTOFF) {
+    fprintf(stderr, "Not saving guest that isn't running");
+    return;
+}
+
+if (virDomainSave(dom, filename) < 0) {
+    fprintf(stderr, "Unable to save guest to %s", filename);
+}
+
+fprintf(stderr, "Guest state saved to %s", filename);
+]]>
+      </programlisting>
+
+      <para>
+	Some period of time later, the saved state file can then be
+	used to restart the guest where it left of, using the
+	virDomainRestore API. The hypervisor driver will return an
+	error if the guest is already running, however, it won't
+	prevent attempts to restore from the same state file multiple
+	times. As noted earlier, it is the applications' responsibility
+	to ensure the guest storage is in exactly the same state as it
+	was when the save image was created
+      </para>
+
+      <programlisting>
+	<![CDATA[
+virDomainPtr dom;
+int id;
+const char *filename = "/var/lib/libvirt/save/demo-guest.img";
+
+if ((id = virDomainRestore(conn, filename)) < 0) {
+    fprintf(stderr, "Unable to restore guest from %s", filename);
+}
+
+dom = virDomainLookupByID(conn, id);
+if (!dom) {
+    fprintf(stderr, "Cannot find guest that was restored");
+    return;
+}
+
+fprintf(stderr, "Guest state restored from %s", filename);
+]]>
+      </programlisting>
+
+    </section>
+
+    <section id="Application_Development_Guide-Lifecycle-Migration">
+      <title>Migration</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Lifecycle-Autostart">
+      <title>Autostart</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+  </section>
+
+  <section id="Application_Development_Guide-Guest_Domains-Monitoring">
+    <title>Monitoring performance</title>
+
+    <para>
+      TBD
+
+    </para>
+
+    <section id="Application_Development_Guide-Monitoring-Domain">
+      <title>Domain performance</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Monitoring-vCPU">
+      <title>vCPU performance</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Monitoring-IO_stats">
+      <title>I/O statistics</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+  </section>
+
+  <section id="Application_Development_Guide-Guest_Domains-Domain_Config">
+    <title>Domain configuration</title>
+
+    <para>
+      TBD
+
+    </para>
+
+    <section id="Application_Development_Guide-Domain_Config-Boot">
+      <title>Boot modes</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Domain_Config-Memory_CPU">
+      <title>Memory / CPU resources</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Domain_Config-Lifecycle">
+      <title>Lifecycle controls</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Domain_Config-Clock">
+      <title>Clock sync</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Domain_Config-Features">
+      <title>Features</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+  </section>
+
+  <section id="Application_Development_Guide-Guest_Domains-Device_Config">
+    <title>Device configuration</title>
+
+    <para>
+      TBD
+
+    </para>
+
+    <section id="Application_Development_Guide-Device_Config-Emulator">
+      <title>Emulator</title>
+
+      <para>
+        TBD
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Device_Config-Disks">
+      <title>Disks</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Device_Config-Networking">
+      <title>Networking</title>
+
+      <para>
+        TBD
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Device_Config-Filesystems">
+      <title>Filesystems</title>
+
+      <para>
+        TBD
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Device_Config-Mice">
+      <title>Mice &amp; tablets</title>
+
+      <para>
+        TBD
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Device_Config-USB_Pass">
+      <title>USB device passthrough</title>
+
+      <para>
+        TBD
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Device_Config-PCI_Pass">
+      <title>PCI device passthrough</title>
+
+      <para>
+        The PCI device passthrough capability allows a physical PCI device from
+	the host machine to be assigned directly to a guest machine.The guest
+	OS drivers can use the device hardware directly without relying on any
+	driver capabilities from the host OS.
+      </para>
+
+      <para>
+	Some caveats apply when using PCI device passthrough. When a PCI device is
+	directly assigned to a guest, migration will not be possible, without
+	first hot-unplugging the device from the guest. In addition
+	libvirt does not guarantee that direct device assignment is secure, leaving
+	security policy decisions to the underlying virtualization technology. Secure
+	PCI device passthrough typically requires special hardware capabilities, such
+	the VT-d feature for Intel chipset, or IOMMU for AMD chipsets.
+      </para>
+
+      <para>
+	There are two modes in which a PCI device can be attached, "managed" or
+	"unmanaged" mode, although at time of writing only KVM supports "managed"
+	mode attachment. In managed mode, the configured device will be automatically
+	detached from the host OS drivers when the guest is started, and then
+	re-attached when the guest shuts down. In unmanaged mode, the device
+	must be explicit detached ahead of booting the guest. The guest will
+	refuse to start if the device is still attached to the host OS. The
+	libvirt 'Node Device' APIs provide a means to detach/reattach PCI devices
+	from/to host drivers. Alternatively the host OS may be configured to
+	blacklist the PCI devices used for guest, so that they never get attached
+	to host OS drivers.
+      </para>
+
+      <para>
+	In both modes, the virtualization technology will always perform a reset
+	on the device before starting a guest, and after the guest shuts down.
+	This is critical to ensure isolation between host and guest OS. There
+	are a variety of ways in which a PCI device can be reset. Some reset
+	techniques are limited in scope to a single device/function, while
+	others may affect multiple devices at once. In the latter case, it will
+	be necessary to co-assign all affect devices to the same guest,
+	otherwise a reset will be impossible to do safely. The node device
+	APIs can be used to determine whether a device needs to be co-assigned,
+	by manually detaching the device and then attempting to perform the
+	reset operation. If this succeeds, then it will be possible to assign
+	the device to a guest on its own. If it fails, then it will be necessary
+	to co-assign the device will others on the same PCI bus. The section
+	documenting node device APIs covers this topic in detail, but as a
+	quick demonstration the following code checks whether a PCI device
+	(represented by a virNodeDevicePtr object instance) can be reset and
+	is thus assignable to a guest
+      </para>
+      <programlisting>
+	<![CDATA[
+virNodeDevicePtr dev = ....get virNodeDevicePtr for the PCI device...
+
+if (virNodeDeviceDettach(dev) < 0) {
+    fprintf(stderr, "Device cannot be dettached from the host OS drivers\n");
+    return;
+}
+
+if (virNodeDeviceReset(dev) < 0) {
+    fprintf(stderr, "Device cannot be safely reset without affecting other devices\n");
+    return;
+}
+
+fprintf(stderr, "Device is suitable for passthrough to a guest\n");
+]]>
+      </programlisting>
+
+      <para>
+	A PCI device is attached to a guest using the 'hostdevice' element.
+	The 'mode' attribute should always be set to 'subsystem', and the
+	'type' attribute to 'pci'. The 'managed' attribute can be either
+	'yes' or 'no' as required by the application. Within the 'hostdevice'
+	element there is a 'source' element and within that a further 'address'
+	element is used to specify the PCI device to be attached. The address
+	element expects attributes for 'domain', 'bus', 'slot' and 'function'.
+	This is easiest to see with a short example
+      </para>
+
+      <programlisting>
+	<![CDATA[
+<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+    <address domain='0x0000'
+             bus='0x06'
+             slot='0x12'
+             function='0x5'/>
+  </source>
+</hostdev>
+]]>
+      </programlisting>
+
+    </section>
+
+  </section>
+
+  <section id="Application_Development_Guide-Guest_Domains-Live_Config">
+    <title>Live configuration change</title>
+
+    <para>
+      TBD
+    </para>
+
+    <section id="Application_Development_Guide-Live_Config-Memory">
+      <title>Memory ballooning</title>
+
+      <para>
+        TBD
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Live_Config-CPU">
+      <title>CPU hotplug</title>
+
+      <para>
+        TBD
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Live_Config-Device_Plug">
+      <title>Device hotplug / unplug</title>
+
+      <para>
+        TBD
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Live_Config-Device_Media">
+      <title>Device media change</title>
+
+      <para>
+        TBD
+      </para>
+
+    </section>
+
+  </section>
+
+  <section id="Application_Development_Guide-Guest_Domains-Security">
+    <title>Security model</title>
+
+    <para>
+      TBD
+    </para>
+
+  </section>
+
+  <section id="Application_Development_Guide-Guest_Domains-Event_Not">
+    <title>Event notifications</title>
+
+    <para>
+      TBD
+
+    </para>
+
+  </section>
+
+  <section id="Application_Development_Guide-Guest_Domains-Tuning">
+    <title>Tuning</title>
+
+    <para>
+      TBD
+
+    </para>
+
+    <section id="Application_Development_Guide-Tuning-Schedular">
+      <title>Scheduler parameters</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Tuning-NUMA">
+      <title>NUMA placement</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+  </section>
+
+</chapter>

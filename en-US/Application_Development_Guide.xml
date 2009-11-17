@@ -1,0 +1,19 @@
+<?xml version='1.0'?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+	  ]>
+
+<book status="draft">
+  <xi:include href="Book_Info.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  <xi:include href="Preface.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  <xi:include href="Introduction.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  <xi:include href="Architecture.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  <xi:include href="Connections.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  <xi:include href="Guest_Domains.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  <xi:include href="Storage_Pools.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  <xi:include href="Virtual_Networks.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  <xi:include href="Network_Interfaces.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  <xi:include href="Host_Devices.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  <xi:include href="Language_Bindings.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  <!-- <xi:include href="HVSupport.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />-->
+  <xi:include href="Revision_History.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+</book>

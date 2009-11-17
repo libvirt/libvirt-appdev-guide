@@ -1,0 +1,96 @@
+<?xml version='1.0'?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+	  ]>
+
+<chapter id="Application_Development_Guide-Storage_Pools">
+  <title>Storage Pools</title>
+  <para>
+    This is a test paragraph
+  </para>
+
+  <section id="Application_Development_Guide-Storage_Pools-Overview">
+    <title>Overview</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Storage_Pools-Listingt">
+    <title>Listing pools</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Storage_Pools-Usage">
+    <title>Pool usage</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Storage_Pools-Lifecycle">
+    <title>Lifecycle control</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Storage_Pools-Discover_Sources">
+    <title>Discovering pool sources</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Storage_Pools-Pool_Config">
+    <title>Pool configuration</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Storage_Pools-Volume">
+    <title>Volume overview</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Storage_Pools-Listing">
+    <title>Listing volumes</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Storage_Pools-Vol_Info">
+    <title>Volume information</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Storage_Pools-Create_Remove">
+    <title>Creating and deleting volumes</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Storage_Pools-Cloning">
+    <title>Cloning volumes</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Storage_Pools-Config_Vol">
+    <title>Configuring volumes</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+</chapter>
+

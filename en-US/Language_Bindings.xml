@@ -1,0 +1,31 @@
+<?xml version='1.0'?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+	  ]>
+
+<chapter id="Application_Development_Guide-Language_Bindings">
+  <title>Alternative Language Bindings</title>
+  <para>
+    TBD
+  </para>
+  <section id="Application_Development_Guide-Language_Bindings-Python">
+    <title>Python</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Language_Bindings-Perl">
+    <title>Perl</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+  <section id="Application_Development_Guide-Language_Bindings-Java">
+    <title>Java</title>
+    <para>
+      TBD
+    </para>
+  </section>
+
+</chapter>
