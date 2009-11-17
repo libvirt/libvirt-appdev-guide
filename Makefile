@@ -1,7 +1,5 @@
 
-all: html
-# PDF is currently broken for some reason
-#all: html pdf
+all: html pdf
 
 html:
 	publican build --langs=en-US --formats=html
