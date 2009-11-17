@@ -8,18 +8,17 @@
     <revhistory>
 
       <revision>
-        <revnumber>5</revnumber>
-        <date>Fri Sep 11 2009</date>
+        <revnumber>1</revnumber>
+        <date>Tue Nov 17 2009</date>
         <author>
-          <firstname>Dani</firstname>
-          <surname>Coulson</surname>
-          <email></email>
+          <firstname>Daniel</firstname>
+          <surname>Berrange</surname>
+          <email>berrange@redhat.com</email>
         </author>
         <revdescription>
           <simplelist>
-            <member>Added new content.</member>
+            <member>Initial draft of document</member>
           </simplelist>
-
         </revdescription>
       </revision>
     </revhistory>
