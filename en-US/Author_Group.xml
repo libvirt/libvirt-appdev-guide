@@ -27,4 +27,12 @@
       <orgdiv>Engineering, Virtualization</orgdiv>
     </affiliation>
   </author>
+  <author>
+    <firstname>Chris</firstname>
+    <surname>Lalancette</surname>
+    <affiliation>
+      <orgname>Red Hat</orgname>
+      <orgdiv>Engineering, Virtualization</orgdiv>
+    </affiliation>
+  </author>
 </authorgroup>

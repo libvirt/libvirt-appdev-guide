@@ -5,12 +5,84 @@
 <chapter id="Application_Development_Guide-Connections">
   <title>Connections</title>
   <para>
-    TBD
+    In libvirt, a connection is the underpinning of every action and object in the
+    system.  Every entity that wants to interact with libvirt, be it virsh,
+    virt-manager, or a program using the libvirt library, needs to first obtain
+    a connection to the libvirt daemon on the host it is interested in interacting
+    with.  A connection describes not only the type of virtualization technology
+    that the agent wants to interact with (qemu, xen, uml, etc), but also describes
+    any authentication methods necessary to connect to that resource.
   </para>
   <section id="Application_Development_Guide-Connections-Overview">
     <title>Overview</title>
     <para>
-      TBD
+      The very first thing a libvirt agent must do is call one of the libvirt
+      connection functions to obtain a virConnectPtr handle.  This handle will be
+      used in subsequent operations.  The libvirt library provides 3 different
+      functions for connecting to a resource:
+    </para>
+    <programlisting>
+<![CDATA[   virConnectPtr virConnectOpen(const char *name)
+   virConnectPtr virConnectOpenReadOnly(const char *name)
+   virConnectPtr virConnectOpenAuth(const char *name, virConnectAuthPtr auth, int flags)
+]]>
+    </programlisting>
+    <para>
+      In all three cases there is a <literal>name</literal> parameter
+      which in fact refers to the URI of the hypervisor to connect
+      to. The previous sections <xref linkend="Application_Development_Guide-Architecture-Driver_Model"/>
+      and <xref linkend="Application_Development_Guide-Architecture-Remote_URIs"/> provide
+      full details on the various URI formats that are acceptable.
+      If the URI is omitted then libvirt will apply some heuristics
+      and probe for a suitable hypervisor driver. While this may be
+      convenient for developers doing adhoc testing, it is strongly
+      recommended that applications do not rely on probing logic
+      since it may change at any time. Applications should always
+      explicitly request which hypervisor connection they want by
+      providing a URI.
+    </para>
+    <para>
+      The difference between the three methods outlined above is
+      the way in which they authenticate and the resulting authorization
+      level they provide. The first <literal>virConnectOpen</literal>
+      method will attempt to open a connection for full read-write
+      access. It does not have any scope for authentication callbacks
+      to be provided, so it will only succeed for connections where
+      authentication can be done based on the POSIX credentials of
+      the application. The second <literal>virConnectOpenReadOnly</literal>
+      will attempt to open a connection for read-only access. Such a
+      connection has a restricted set of API calls that are allowed,
+      and is typically useful for monitoring applications that should
+      not be allowed to make changes. As before this API has no scope
+      for authentication callbacks, so relies on POSIX credentials.
+      The final <literal>virConnectOpenAuth</literal> method is the
+      most flexible, and effectively obsoletes the previous two
+      APIs. It takes an extra parameter providing an instance of the
+      <literal>virConnectAuthPtr</literal> struct which contains
+      the callbacks for collecting authentication credentials from
+      the client app. This allows libvirt to prompt for usernames,
+      passwords, and more. The libvirt API provides an instance of
+      this struct via the symbol <literal>virConnectAuthPtrDefault</literal>
+      that implements callbacks suitable for a command line based
+      application. Graphical applications will need to provide their
+      own callback implementations. The <literal>flags</literal>
+      parameter allows the application to request a read-only
+      connection if desired.
+    </para>
+
+    <para>
+      A connections must be released by calling <literal>virConnectClose</literal>
+      when no longer required. Connections are a reference counted object, so
+      if it is intended for a connection to be used from multiple threads at
+      once, each additional thread should call <literal>virConnectRef</literal>
+      to ensure the connection is not freed while still in use. Every extra
+      call to <literal>virConnectRef</literal> must be accompanied by a
+      corresponding call to <literal>virConnectClose</literal> to relaese
+      the reference when no longer required. Note also, that every other
+      object associated with a connection (<literal>virDomainPtr</literal>,
+      <literal>virNetworkPtr</literal>, etc) will also hold a reference
+      on the connection. So to avoid leaking a connection object, applications
+      must ensure all associated objects are also freed.
     </para>
   </section>
 
@@ -24,7 +96,208 @@
   <section id="Application_Development_Guide-Connections-Capability_Info">
     <title>Capability information</title>
     <para>
-      TBD
+      The capabilities XML format provides information about a connection.
+      In particular, it describes the capabilities of the virtualization host,
+      the virtualization driver, and the kinds of guests that
+      the virtualization technology can launch.  Note that the capabilities XML can
+      (and does) vary based on the libvirt driver in use.  An example capabilities
+      XML looks like:
+    </para>
+    <example>
+      <title>Example QEMU driver capabilities</title>
+      <programlisting>
+	<![CDATA[
+ <capabilities>
+  <host>
+    <cpu>
+      <arch>x86_64</arch>
+    </cpu>
+    <migration_features>
+      <live/>
+      <uri_transports>
+        <uri_transport>tcp</uri_transport>
+      </uri_transports>
+    </migration_features>
+    <topology>
+      <cells num='1'>
+        <cell id='0'>
+          <cpus num='2'>
+            <cpu id='0'/>
+            <cpu id='1'/>
+          </cpus>
+        </cell>
+      </cells>
+    </topology>
+  </host>
+
+  <guest>
+    <os_type>hvm</os_type>
+    <arch name='i686'>
+      <wordsize>32</wordsize>
+      <emulator>/usr/bin/qemu</emulator>
+      <machine>pc</machine>
+      <machine>isapc</machine>
+      <domain type='qemu'>
+      </domain>
+      <domain type='kvm'>
+        <emulator>/usr/bin/qemu-kvm</emulator>
+      </domain>
+    </arch>
+    <features>
+      <pae/>
+      <nonpae/>
+      <acpi default='on' toggle='yes'/>
+      <apic default='on' toggle='no'/>
+    </features>
+  </guest>
+
+  <guest>
+    <os_type>hvm</os_type>
+    <arch name='x86_64'>
+      <wordsize>64</wordsize>
+      <emulator>/usr/bin/qemu-system-x86_64</emulator>
+      <machine>pc</machine>
+      <machine>isapc</machine>
+      <domain type='qemu'>
+      </domain>
+      <domain type='kvm'>
+        <emulator>/usr/bin/qemu-kvm</emulator>
+      </domain>
+    </arch>
+    <features>
+      <acpi default='on' toggle='yes'/>
+      <apic default='on' toggle='no'/>
+    </features>
+  </guest>
+
+ </capabilities>
+ ]]>
+      </programlisting>
+    </example>
+
+    <para>
+      (the rest of the discussion will refer back to this XML using XPath notation).
+      In the capabilities XML, there is always the /host sub-document, and zero or
+      more /guest sub-documents (while zero guest sub-documents are allowed,
+      this means that no guests of this particular driver can be started on this
+      particular host).
+    </para>
+
+    <para>
+    The /host sub-document describes the capabilities of the host.
+    </para>
+    <para>
+      /host/cpu/arch is a required XML node that describes the underlying host
+      CPU architecture.  As of this writing, all libvirt drivers initialize this
+      from the output of uname(2).
+    </para>
+    <para>
+      /host/cpu/features is an optional sub-document that describes additional cpu
+      features present on the host.  As of this writing, it is only used by the
+      xen driver to report on the presence or lack of the svm or vmx flag, and to
+      report on the presence or lack of the pae flag.
+    </para>
+    <para>
+      /host/migration_features is an optional sub-document that describes the
+      migration features that this driver supports on this host (if any).  If this
+      sub-document does not exist, then migration is not supported.  As of this
+      writing, only the xen and qemu drivers support migration.
+      The /host/migration_features/live XML node exists if the driver supports live
+      migration; both xen and qemu support live migration.
+    </para>
+    <para>
+      /host/migration_features/uri_transports is an optional sub-document that
+      describes alternate migration connection mechanisms.  These alternate
+      connection mechanisms can be useful on multi-homed virtualization systems.
+      For instance, the virsh migrate command might connect to the source of the
+      migration via 10.0.0.1, and the destination of the migration via 10.0.0.2.
+      However, due to security policy, the source of the migration might only be
+      allowed to talk directly to the destination of the migration via
+      192.168.0.0/24.  In this case, using the alternate migration connection
+      mechanism would allow this migration to succeed.  As of this writing, the xen
+      driver supports the alternate migration mechanism "xenmigr", while the qemu
+      driver supports the alternate migration mechanism "tcp".  Please see the
+      documentation on migration (FIXME: where is this?) for more information.
+    </para>
+    <para>
+      The /host/topology sub-document describes the NUMA topology of the host
+      machine; each NUMA node is represented by a /host/topology/cells/cell, and
+      describes which CPUs are in that NUMA node.  If the host machine is a UMA
+      (non-NUMA) machine, then there will be only one cell and all CPUs will be
+      in this cell.  This is very hardware-specific, so will necessarily vary
+      between different machines.
+    </para>
+    <para>
+      /host/secmodel is an optional sub-document that describes the security model
+      in use on the host.  /host/secmodel/model shows the name of the security model
+      while /host/secmodel/doi shows the Domain Of Interpretation.  As of this
+      writing, only the qemu driver supports the security model, and only the
+      selinux model is implemented.  For more information about security, please
+      see the Security section. (FIXME: where is this?)
+    </para>
+    <para>
+      Each /guest sub-document describes a kind of guest that this host driver can
+      start.  This description includes the architecture of the guest (i.e. i686)
+      along with the ABI provided to the guest (i.e. hvm, xen, or uml).
+    </para>
+    <para>
+      /guest/os_type is a required element that describes the type of guest.
+    </para>
+    <para>
+      qemu driver: always "hvm" for a fully-virtualized guest
+      xen driver: either "xen" for a paravirtualized guest or "hvm" for a
+      fully virtualized guest
+      uml driver: always "uml"
+      lxc driver: always "exe"
+      vbox driver: always "hvm" for a fully-virtualized guest
+      openvz driver: always "exe"
+      one driver: always "hvm"
+      esx driver: Not supported at this time
+    </para>
+    <para>
+      /guest/arch is the root of an XML sub-document describing various virtual
+      hardware aspects of this guest type.  It has a single attribute called
+      "name", which can be used to refer back to this sub-document.
+    </para>
+    <para>
+      /guest/arch/wordsize is a required element that describes how many bits per
+      word this guest type uses.  This is typically 32 or 64.
+    </para>
+    <para>
+      /guest/arch/emulator is an optional element that describes the default path
+      to the emulator for this guest type.  Note that the emulator can be
+      overridden by the /guest/arch/domain/emulator element (described below) for
+      guest types that need alternate binaries.
+    </para>
+    <para>
+      /guest/arch/loader is an optional element that describes the default path to
+      the firmware loader for this guest type.  Note that the default loader
+      path can be overridden by the /guest/arch/domain/loader element (described
+      below) for guest types that use alternate loaders.  At present, this is
+      only used by the xen driver for HVM guests.
+    </para>
+    <para>
+      There can be zero or more /guest/arch/machine elements that describe the
+      default types of machines that this guest emulator can emulate.  Note that
+      these default machine types can be overridden by the
+      /guest/arch/domain/machine elements (described below) for guest types that
+      provide alternate machine types.  Typical values for this are "pc", and
+      "isapc", meaning a regular PCI based PC, and an older, ISA based PC,
+      respectively.
+    </para>
+    <para>
+      There can be zero or more /guest/arch/domain XML sub-trees (although with
+      zero /guest/arch/domain XML sub-trees, no guests of this driver can be
+      started).  Each /guest/arch/domain XML sub-tree has optional &lt;emulator&gt;,
+      &lt;loader&gt;, and &lt;machine&gt; elements that override the respective defaults
+      specified above.  For any of the elements that are missing, the
+      default values are used.
+    </para>
+    <para>
+      The /guest/features optional sub-document describes various additional guest
+      features that can be enabled or disabled, along with their default state
+      and whether they can be toggled on or off.
+      FIXME: describe more about this
     </para>
   </section>
 
@@ -38,8 +311,42 @@
   <section id="Application_Development_Guide-Connections-Event_Loop">
     <title>Event loop integration</title>
     <para>
-      TBD
+      The purpose of the libvirt event loop APIs is so that libvirt can be easily
+      integrated into event driven applications, such as GUIs.  These methods
+      provide a way for the libvirt library to notify an application
+      that there are events that need servicing; the application can then service
+      these events during it's normal event loop.
     </para>
+    <para>
+      In order to accomplish this, there are callbacks in both directions, from
+      the application to libvirt, and from libvirt to the application.  When
+      initially registering the event callback, the application should provide
+      various callbacks to libvirt; these functions will be called when libvirt
+      adds, deletes, or otherwise modifies a handle.  When libvirt calls these
+      functions, they should update internal application state regarding the handles
+      to be monitored.
+    </para>
+    <para>
+      Eventually a libvirt handle will need servicing.  When this happens, the
+      application should call the callback previously provided by libvirt to service
+      the handle in question.
+    </para>
+
+    <section id="Application_Development_Guide-Connections-Event_Loop-Event_Types">
+      <title>Event Types</title>
+      <para>
+	The event types define what types of events an event loop should monitor
+	a particular handle for.  The event types are specific to libvirt, and must
+	be translated by the application to and from poll() events.
+      </para>
+      <para>
+	VIR_EVENT_HANDLE_READABLE - the handle has data to read
+	VIR_EVENT_HANDLE_WRITABLE - writing to the handle will not block
+	VIR_EVENT_HANDLE_ERROR - the handle has had some kind of error
+	VIR_EVENT_HANDLE_HANGUP - the handle has hung up.  This typically means the handle
+        has been closed.
+      </para>
+    </section>
   </section>
 
   <section id="Application_Development_Guide-Connections-Security">
