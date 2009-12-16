@@ -35,4 +35,12 @@
       <orgdiv>Engineering, Virtualization</orgdiv>
     </affiliation>
   </author>
+  <author>
+    <firstname>Laine</firstname>
+    <surname>Stump</surname>
+    <affiliation>
+      <orgname>Red Hat</orgname>
+      <orgdiv>Engineering, Virtualization</orgdiv>
+    </affiliation>
+  </author>
 </authorgroup>
