@@ -10,7 +10,7 @@
   <edition>1</edition>
   <pubsnumber>5</pubsnumber>
   <abstract>
-    <para>This document provides a guide for application developers using libvirt</para>
+    <para>This document provides a guide for application developers using libvirt.</para>
   </abstract>
   <corpauthor>
     <inlinemediaobject>
