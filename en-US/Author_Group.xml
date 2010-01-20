@@ -43,4 +43,12 @@
       <orgdiv>Engineering, Virtualization</orgdiv>
     </affiliation>
   </author>
+  <author>
+    <firstname>David</firstname>
+    <surname>Jorm</surname>
+    <affiliation>
+      <orgname>Red Hat</orgname>
+      <orgdiv>Engineering Content Services</orgdiv>
+    </affiliation>
+  </author>
 </authorgroup>
