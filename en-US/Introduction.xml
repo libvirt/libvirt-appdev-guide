@@ -95,14 +95,37 @@
           <row>
             <entry><para><application>Node</application></para></entry>
             <entry>
-              <para>A single physical machine.</para>
+              <para>
+                A single physical server. Nodes may be any one of many
+                different types, and are commonly referred to by their primary
+                purpose. Examples are storage nodes, cluster nodes, and database
+                nodes.
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry><para><application>Storage Pool</application></para></entry>
+            <entry>
+              <para>
+                A collection of storage media, such as physical hard drives. A
+                storage pool is sub-divided into smaller containers called
+                Volumes, which may then be allocated to one or more Domains. 
+              </para>
+            </entry>
+          </row>
+          <row>
+            <entry><para><application>Volume</application></para></entry>
+            <entry>
+              <para>
+                A storage space, allocated from a Storage Pool. A Volume may
+                be assigned to one or more Domains for use, and are commonly
+                used inside Domains as virtual hard drives.
+              </para>
             </entry>
           </row>
         </tbody>
       </tgroup>
     </table>
-
-
   </section>
 
 </chapter>
