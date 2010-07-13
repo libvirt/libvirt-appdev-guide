@@ -8,6 +8,7 @@
     <title>Domain overview</title>
 
     <para>
+      A domain is an instance of an operating system running on a virtualized machine.
       A guest domain can refer to either a running virtual machine or a configuration
       which can be used to launch a virtual machine. The connection object provides APIs
       to enumerate the guest domains, create new guest domains and manage existing domains.
@@ -261,12 +262,49 @@
     <title>Lifecycle control</title>
 
     <para>
-      TBD
-
+	libvirt can control the entire lifecycle of guest domains. Guest domains can transition through several states throughout their lifecycle:
     </para>
+    <orderedlist>
+      <listitem>
+        <para>
+          <literal>Undefined</literal>. This is the baseline state. An undefined guest domain has not been defined or created in any way.
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          <literal>Defined</literal>. A defined guest domain has been defined but is not running. This state could also be described as <literal>Stopped</literal>.
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          <literal>Running</literal>. A running guest domain is defined and being executed on a hypervisor.
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          <literal>Paused</literal>. A paused guest domain is in a suspended state from the <literal>Running</literal> state. Its memory image has been temporarily stored, and it can be resumed to the <literal>Running</literal> state without the guest domain operating system being aware it was ever suspended.
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          <literal>Saved</literal>. A saved domain has had its memory image, as captured in the <literal>Paused</literal> state, saved to persistent storage. It can be restored to the <literal>Running</literal> state without the guest domain operating system being aware it was ever suspended.
+        </para>
+      </listitem>
+    </orderedlist>
+    <para>
+      The transitions between these states fall into several categories: <xref linkend="Application_Development_Guide-Lifecycle-Provisioning" />, <xref linkend="Application_Development_Guide-Lifecycle-Save" />, <xref linkend="Application_Development_Guide-Lifecycle-Migration" /> and <xref linkend="Application_Development_Guide-Lifecycle-Autostart" />.
+    </para>
+    <figure id="guest_domain_state_transition">
+      <title>Guest domain lifecycle</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata fileref="images/guest-state-transition.png" format="PNG" />
+        </imageobject>
+      </mediaobject>
+    </figure>
 
     <section id="Application_Development_Guide-Lifecycle-Provisioning">
-      <title>Provisioning</title>
+      <title>Provisioning and starting</title>
 
       <para>
 	Provisioning refers to the task of creating new guest domains,
