@@ -313,7 +313,7 @@
 	be provisioned, but the choices available will vary according
 	to the hypervisor and type of guest domain being provisioned.
 	It is not uncommon for an application to support several
-	different provisioning methods.
+	different provisioning methods. Starting refers to executing a provisioned guest domain on a hypervisor.
       </para>
 
       <section id="Application_Development_Guide-Lifecycle-Provisioning-apis">
@@ -775,9 +775,25 @@ fprintf(stderr, "Guest provisoning complete, OS is running\n");
       </section>
     </section>
 
-    <section id="Application_Development_Guide-Lifecycle-Save">
-      <title>Save / restore</title>
+    <section id="Application_Development_Guide-Lifecycle-Stopping">
+      <title>Stopping</title>
+      <para>
+        Stopping refers to the process of halting a running guest. A guest can be stopped by two methods: shutdown and destroy.
+      </para>
+      <para>
+        Shutdown is a clean stop process, which sends a signal to the guest domain operating system asking it to shut down immediately. The guest will only be stopped once the operating system has successfuly shut down. The shutdown process is analagous to running a shutdown command on a physical machine.
+      </para>
+      <para>
+        Destroy immediately terminates the guest domain. The destroy process is analogous to pulling the plug on a physical machine.
+      </para>
+    </section>
 
+    <section id="Application_Development_Guide-Lifecycle-Save">
+      <title>Suspend / Resume and Save / Restore</title>
+
+      <para>
+        Suspend and resume refers to the process of taking a running guest and temporarily saving its memory state. At a later time, it is possible to resume the guest to its original running state, contiuining execution where it left off. Suspend does not save a persistent image of the guest's memory. For this, save is used.
+      </para>
       <para>
         Save and restore refers to the process of taking a running guest
 	and saving its memory state to a file. At some time later, it
@@ -880,8 +896,7 @@ fprintf(stderr, "Guest state restored from %s", filename);
       <title>Migration</title>
 
       <para>
-        TBD
-
+        Migration is the process of taking the image of a guest domain and moving it somewhere, typically from a hypervisor on one node to a hypervisor on another node.
       </para>
 
     </section>
