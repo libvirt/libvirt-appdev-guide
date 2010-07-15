@@ -896,7 +896,10 @@ fprintf(stderr, "Guest state restored from %s", filename);
       <title>Migration</title>
 
       <para>
-        Migration is the process of taking the image of a guest domain and moving it somewhere, typically from a hypervisor on one node to a hypervisor on another node.
+        Migration is the process of taking the image of a guest domain and moving it somewhere, typically from a hypervisor on one node to a hypervisor on another node. There are two APIs for migration. The <literal>virDomainMigrate</literal> command takes an established hypervisor connection, and instructs the domain to migrate to this connection. The <literal>virMigrateToUri</literal> command takes a URI specifying a hypervisor connection, opens the connection, then instructions the domain to migrate to this connection. Both these commands can be passed a parameter to specify live migration. For migration to complete successfully, storage needs to be shared between the source and target hypervisors.
+      </para>
+      <para>
+        TODO: Add 2 cold examples, 1 live example.
       </para>
 
     </section>
@@ -905,50 +908,11 @@ fprintf(stderr, "Guest state restored from %s", filename);
       <title>Autostart</title>
 
       <para>
-        TBD
-
+        A guest domain can be configured to autostart on a particular hypervisor, either by the hypervisor itself or libvirt. In combination with managed save, this allows the operating system on a guest domain to withstand host reboots without ever considering itself to have rebooted. When libvirt restarts, the guest domain will be automatically restored. This is handled by an API separate to regular save and restore, because paths must be known to libvirt without user input.
       </para>
-
-    </section>
-
-  </section>
-
-  <section id="Application_Development_Guide-Guest_Domains-Monitoring">
-    <title>Monitoring performance</title>
-
-    <para>
-      TBD
-
-    </para>
-
-    <section id="Application_Development_Guide-Monitoring-Domain">
-      <title>Domain performance</title>
-
       <para>
-        TBD
-
+        TODO: code example.
       </para>
-
-    </section>
-
-    <section id="Application_Development_Guide-Monitoring-vCPU">
-      <title>vCPU performance</title>
-
-      <para>
-        TBD
-
-      </para>
-
-    </section>
-
-    <section id="Application_Development_Guide-Monitoring-IO_stats">
-      <title>I/O statistics</title>
-
-      <para>
-        TBD
-
-      </para>
-
     </section>
 
   </section>
@@ -957,8 +921,7 @@ fprintf(stderr, "Guest state restored from %s", filename);
     <title>Domain configuration</title>
 
     <para>
-      TBD
-
+      Domains are defined in libvirt using XML. Everything related only to the domain, such as memory and CPU, is defined in the domain XML. The domain XML format is specified at <ulink url="http://libvirt.org/formatdomain.html">http://libvirt.org/formatdomain.html</ulink>. This can be accessed locally in <filename>/usr/share/doc/libvirt-devel-version/</filename> if your system has the <package>libvirt-devel</package> package installed.
     </para>
 
     <section id="Application_Development_Guide-Domain_Config-Boot">
@@ -975,7 +938,7 @@ fprintf(stderr, "Guest state restored from %s", filename);
       <title>Memory / CPU resources</title>
 
       <para>
-        TBD
+        TBD. Maps to the basic resources section.
 
       </para>
 
@@ -1003,6 +966,45 @@ fprintf(stderr, "Guest state restored from %s", filename);
 
     <section id="Application_Development_Guide-Domain_Config-Features">
       <title>Features</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+  </section>
+
+  <section id="Application_Development_Guide-Guest_Domains-Monitoring">
+    <title>Monitoring performance</title>
+
+    <para>
+      Statistical metrics are available for monitoring the utilization rates of domains, vCPUs, memory, block devices, and network interfaces.
+    </para>
+
+    <section id="Application_Development_Guide-Monitoring-Domain">
+      <title>Domain performance</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Monitoring-vCPU">
+      <title>vCPU performance</title>
+
+      <para>
+        TBD
+
+      </para>
+
+    </section>
+
+    <section id="Application_Development_Guide-Monitoring-IO_stats">
+      <title>I/O statistics</title>
 
       <para>
         TBD
