@@ -662,7 +662,7 @@
       </table>
 
     </section>
-
+<!-- DFJ: removed to Connections chapter
     <section id="Application_Development_Guide-Architecture-Remote_URIs">
       <title>Remote URIs</title>
 
@@ -910,7 +910,7 @@
 		<para>tls</para>
               </entry>
               <entry>
-		<para>Client checks of the server's certificate are disable if a non-zero value is set. Note that to disable server checks of the client's certificate or IP address you must change the libvirtd configuration <!--(refer to <xref linkend=""/>)-->. Example: <literal>no_verify=1</literal>
+		<para>Client checks of the server's certificate are disable if a non-zero value is set. Note that to disable server checks of the client's certificate or IP address you must change the libvirtd configuration . Example: <literal>no_verify=1</literal>
 		</para>
               </entry>
 	    </row>
@@ -929,7 +929,7 @@
       </table>
 
     </section>
-
+-->
   </section>
 
   <section id="Application_Development_Guide-Architecture-TLS_Cert">

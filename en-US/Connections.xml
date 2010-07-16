@@ -5,21 +5,22 @@
 <chapter id="Application_Development_Guide-Connections">
   <title>Connections</title>
   <para>
-    In libvirt, a connection is the underpinning of every action and object in the
-    system.  Every entity that wants to interact with libvirt, be it virsh,
-    virt-manager, or a program using the libvirt library, needs to first obtain
-    a connection to the libvirt daemon on the host it is interested in interacting
-    with.  A connection describes not only the type of virtualization technology
-    that the agent wants to interact with (qemu, xen, uml, etc), but also describes
-    any authentication methods necessary to connect to that resource.
+    In libvirt, a connection is the underpinning of every action and
+    object in the system. Every entity that wants to interact with
+    libvirt, be it virsh, virt-manager, or a program using the libvirt
+    library, needs to first obtain a connection to the libvirt daemon on
+    the host it is interested in interacting with. A connection describes
+    not only the type of virtualization technology that the agent wants to
+    interact with (qemu, xen, uml, etc), but also describes any
+    authentication methods necessary to connect to that resource.
   </para>
   <section id="Application_Development_Guide-Connections-Overview">
     <title>Overview</title>
     <para>
-      The very first thing a libvirt agent must do is call one of the libvirt
-      connection functions to obtain a virConnectPtr handle.  This handle will be
-      used in subsequent operations.  The libvirt library provides 3 different
-      functions for connecting to a resource:
+      The very first thing a libvirt agent must do is call one of the
+      libvirt connection functions to obtain a <literal>virConnectPtr</literal> handle. This
+      handle will be used in subsequent operations. The libvirt library
+      provides 3 different functions for connecting to a resource:
     </para>
     <programlisting>
 <![CDATA[   virConnectPtr virConnectOpen(const char *name)
@@ -33,75 +34,868 @@
       to. The previous sections <xref linkend="Application_Development_Guide-Architecture-Driver_Model"/>
       and <xref linkend="Application_Development_Guide-Architecture-Remote_URIs"/> provide
       full details on the various URI formats that are acceptable.
-      If the URI is omitted then libvirt will apply some heuristics
-      and probe for a suitable hypervisor driver. While this may be
-      convenient for developers doing adhoc testing, it is strongly
-      recommended that applications do not rely on probing logic
-      since it may change at any time. Applications should always
-      explicitly request which hypervisor connection they want by
-      providing a URI.
+      If the URI is NULL
+      then libvirt will apply some heuristics and probe for a suitable
+      hypervisor driver. While this may be convenient for developers doing
+      adhoc testing, it is strongly recommended that applications do not
+      rely on probing logic since it may change at any time. Applications
+      should always explicitly request which hypervisor connection is
+      desired by providing a URI.
     </para>
     <para>
-      The difference between the three methods outlined above is
-      the way in which they authenticate and the resulting authorization
-      level they provide. The first <literal>virConnectOpen</literal>
-      method will attempt to open a connection for full read-write
-      access. It does not have any scope for authentication callbacks
-      to be provided, so it will only succeed for connections where
-      authentication can be done based on the POSIX credentials of
-      the application. The second <literal>virConnectOpenReadOnly</literal>
-      will attempt to open a connection for read-only access. Such a
-      connection has a restricted set of API calls that are allowed,
-      and is typically useful for monitoring applications that should
-      not be allowed to make changes. As before this API has no scope
-      for authentication callbacks, so relies on POSIX credentials.
-      The final <literal>virConnectOpenAuth</literal> method is the
-      most flexible, and effectively obsoletes the previous two
-      APIs. It takes an extra parameter providing an instance of the
-      <literal>virConnectAuthPtr</literal> struct which contains
-      the callbacks for collecting authentication credentials from
-      the client app. This allows libvirt to prompt for usernames,
-      passwords, and more. The libvirt API provides an instance of
-      this struct via the symbol <literal>virConnectAuthPtrDefault</literal>
-      that implements callbacks suitable for a command line based
-      application. Graphical applications will need to provide their
-      own callback implementations. The <literal>flags</literal>
-      parameter allows the application to request a read-only
-      connection if desired.
+      The difference between the three methods outlined above is the way in
+      which they authenticate and the resulting authorization level they
+      provide.
     </para>
+    <section>
+      <title>virConnectOpen</title>
+      <para>
+        The <literal>virConnectOpen</literal> API will attempt to open a
+        connection for full read-write access. It does not have any scope for
+        authentication callbacks to be provided, so it will only succeed for
+        connections where authentication can be done based on the credentials
+        of the application.
+      </para>
+      <example>
+        <title>Using virConnectOpen</title>
+        <programlisting><![CDATA[
+/* example ex1.c */
+/* compile with: gcc -g -Wall ex1.c -o ex -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
 
-    <para>
-      A connections must be released by calling <literal>virConnectClose</literal>
-      when no longer required. Connections are a reference counted object, so
-      if it is intended for a connection to be used from multiple threads at
-      once, each additional thread should call <literal>virConnectRef</literal>
-      to ensure the connection is not freed while still in use. Every extra
-      call to <literal>virConnectRef</literal> must be accompanied by a
-      corresponding call to <literal>virConnectClose</literal> to relaese
-      the reference when no longer required. Note also, that every other
-      object associated with a connection (<literal>virDomainPtr</literal>,
-      <literal>virNetworkPtr</literal>, etc) will also hold a reference
-      on the connection. So to avoid leaking a connection object, applications
-      must ensure all associated objects are also freed.
-    </para>
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+    virConnectClose(conn);
+    return 0;
+}
+        ]]></programlisting>
+      </example>
+      <para>
+        The above example opens up a read-write connection to the system qemu hypervisor
+        driver, checks to make sure it was successful, and if so closes the
+        connection.  For more information on libvirt URI's, see the libvirt
+        URI section.
+      </para>
+    </section>
+    <section>
+      <title>virConnectOpenReadOnly</title>
+      <para>
+        The <literal>virConnectOpenReadOnly</literal> API will attempt to open a connection
+        for read-only access. Such a connection has a restricted set of API
+        calls that are allowed, and is typically useful for monitoring
+        applications that should not be allowed to make changes. As with
+        <literal>virConnectOpen</literal>, this API has no scope for authentication callbacks, so
+        relies on credentials.
+      </para>
+      <example>
+        <title>Using virConnectOpenReadOnly</title>
+        <programlisting><![CDATA[
+/* example ex2.c */
+/* compile with: gcc -g -Wall ex2.c -o ex2 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+
+    conn = virConnectOpenReadOnly("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+    virConnectClose(conn);
+    return 0;
+}
+        ]]></programlisting>
+      </example>
+      <para>
+        The above example opens up a read-only connection to the system qemu hypervisor
+        driver, checks to make sure it was successful, and if so closes the
+        connection.  For more information on libvirt URI's, see the libvirt
+        URI section.
+      </para>
+    </section>
+    <section>
+      <title>virConnectOpenAuth</title>
+      <para>
+        The <literal>virConnectOpenAuth</literal> API is the most flexible, and effectively
+        obsoletes the previous two APIs. It takes an extra parameter providing
+        an instance of the <literal>virConnectAuthPtr</literal> struct which contains the
+        callbacks for collecting authentication credentials from the client
+        app. This allows libvirt to prompt for usernames, passwords, and
+        more. The libvirt API provides an instance of this struct via the
+        symbol <literal>virConnectAuthPtrDefault</literal> that implements callbacks suitable for
+        a command line based application. Graphical applications will need to
+        provide their own callback implementations. The flags parameter allows
+        the application to request a read-only connection if desired.
+      </para>
+      <example id="virtConnectOpenAuth-Example1">
+        <title>Using virConnectOpenAuth</title>
+        <programlisting><![CDATA[
+/* example ex3.c */
+/* compile with: gcc -g -Wall ex3.c -o ex3 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+
+    conn = virConnectOpenAuth("qemu+tcp://localhost/system", virConnectAuthPtrDefault, 0);
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu+tcp://localhost/system\n");
+        return 1;
+    }
+    virConnectClose(conn);
+    return 0;
+}
+        ]]></programlisting>
+      </example>
+      <para>
+        To test the above program, the following configuration must be present:
+      </para>
+      <orderedlist>
+        <listitem>
+          <para><filename>/etc/libvirt/libvirtd.conf</filename></para>
+          <screen>
+listen_tls = 0
+listen_tcp = 1
+auth_tcp = "sasl"
+          </screen>
+        </listitem>
+        <listitem>
+          <para><filename>/etc/sasl2/libvirt.conf</filename></para>
+          <screen>
+mech_list: digest-md5
+          </screen>
+        </listitem>
+        <listitem>
+          <para>A virt user has been added to the SASL database:</para>
+          <screen><command># saslpasswd2 -a libvirt virt # this will prompt for a password</command></screen>
+        </listitem>
+        <listitem>
+          <para>libvirtd has been started with <parameter>--listen</parameter></para>
+        </listitem>
+      </orderedlist>
+      <para>
+        Once the above is configured, <xref linkend="virtConnectOpenAuth-Example1" /> should prompt for a username
+        and password and allow read-write access to libvirtd.
+      </para>
+      <para>
+        If additional functionality is needed, a custom credential callback can also be
+        provided as in the following program:
+      </para>
+      <example id="virtConnectOpenAuth-Example2">
+        <title>Using a custom credential callback with virConnectOpenAuth</title>
+        <programlisting><![CDATA[
+/* example ex4.c */
+/* compile with: gcc -g -Wall ex4.c -o ex4 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+#include <string.h>
+
+static int authCreds[] = {
+    VIR_CRED_AUTHNAME,
+    VIR_CRED_PASSPHRASE,
+};
+
+static int authCb(virConnectCredentialPtr cred, unsigned int ncred, void *cbdata)
+{
+    int i;
+    char *bufptr;
+    char buf[1024];
+
+    for (i = 0; i < ncred; i++) {
+        if (cred[i].type == VIR_CRED_AUTHNAME) {
+            printf("%s: ", cred[i].prompt);
+            fflush(stdout);
+            fgets(buf, sizeof(buf), stdin);
+            buf[strlen(buf) - 1] = '\0';
+            cred[i].result = strdup(buf);
+            if (cred[i].result == NULL)
+                return -1;
+            cred[i].resultlen = strlen(cred[i].result);
+        }
+        else if (cred[i].type == VIR_CRED_PASSPHRASE) {
+            printf("%s: ", cred[i].prompt);
+            fflush(stdout);
+            fgets(buf, sizeof(buf), stdin);
+            buf[strlen(buf) - 1] = '\0';
+            cred[i].result = strdup(buf);
+            if (cred[i].result == NULL)
+                return -1;
+            cred[i].resultlen = strlen(cred[i].result);
+        }
+    }
+
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    virConnectAuth auth;
+
+    auth.credtype = authCreds;
+    auth.ncredtype = sizeof(authCreds)/sizeof(int);
+    auth.cb = authCb;
+    auth.cbdata = NULL;
+
+    conn = virConnectOpenAuth("qemu+tcp://localhost/system", &auth, 0);
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu+tcp://localhost/system\n");
+        return 1;
+    }
+    virConnectClose(conn);
+    return 0;
+}
+        ]]></programlisting>
+      </example>
+      <para>
+        The same configuration as <xref linkend="virtConnectOpenAuth-Example1" /> must be present in order to test
+        <xref linkend="virtConnectOpenAuth-Example2" />.  The first thing to note here is the use of a
+        <literal>virConnectAuth</literal> structure, which looks like the following:
+      </para>
+        <programlisting><![CDATA[
+struct _virConnectAuth {
+    int *credtype; /* List of supported virConnectCredentialType values */
+    unsigned int ncredtype;
+
+    virConnectAuthCallbackPtr cb; /* Callback used to collect credentials */
+    void *cbdata;
+};
+typedef struct _virConnectAuth virConnectAuth;
+        ]]></programlisting>
+      <para>
+        The credtype member points to an array of integers that represent the
+        type of credentials this callback is willing to support.  In <xref linkend="virtConnectOpenAuth-Example2" />
+        the authCreds array specifies all of the types that authCb supports;
+        the full list of credential types is available in libvirt.h.  The
+        ncredtype member specifies the size of the credtype array.  The cb
+        member is a function pointer which specifies the callback that will be
+        used when necessary; its signature must be:
+      </para>
+        <programlisting><![CDATA[
+typedef int (*virConnectAuthCallbackPtr)(virConnectCredentialPtr cred,
+                                         unsigned int ncred,
+                                         void *cbdata);
+        ]]></programlisting>
+      <para>
+        Finally, the cbdata member is a pointer that can point to additional
+        data needed by the callback; in <xref linkend="virtConnectOpenAuth-Example2" />, this is not used so it is
+        set to NULL.
+      </para>
+      <para>
+        After setting up the auth structure, <xref linkend="virtConnectOpenAuth-Example2" /> goes on to use this
+        structure in the <literal>virConnectOpenAuth</literal> function.  When the libvirt
+        internals require credentials, the callback in auth.cb (authCb) will
+        be called.  The cred parameter to this function is an array of
+        <literal>virConnectCredential</literal> structures (described below) that libvirt needs
+        to finish the authentication. The ncred parameter specifies
+        the size of the cred array.  Finally, the cbdata parameter is a
+        pointer that contains the value passed in from auth.cbdata.
+      </para>
+      <para>
+        It is the responsibility of the auth.cb callback to examine each of
+        the <literal>virConnectCredential</literal> structures and collect the necessary
+        credentials.  The <literal>virConnectCredential</literal> structure looks like:
+      </para>
+        <programlisting><![CDATA[
+struct _virConnectCredential {
+    int type; /* One of virConnectCredentialType constants */
+    const char *prompt; /* Prompt to show to user */
+    const char *challenge; /* Additional challenge to show */
+    const char *defresult; /* Optional default result */
+    char *result; /* Result to be filled with user response (or defresult) */
+    unsigned int resultlen; /* Length of the result */
+};
+typedef struct _virConnectCredential virConnectCredential;
+        ]]></programlisting>
+      <para>
+        In the case of example 4, authCb only handles VIR_CRED_AUTHNAME and
+        VIR_CRED_PASSPHRASE, so for each of these credential types it prints
+        out a prompt from the credential structure, collects the information
+        into a temporary buffer, and then copies that buffer into the result
+        and resultlen of that particular credential.  Handling a credential
+        but leaving result or resultlen as 0 is a programming error.  If
+        collection of all credentials is successful, auth.cb should return 0;
+        otherwise, it should return -1 and libvirt will fail the connection.
+      </para>
+    </section>
+    <section>
+      <title>virConnectClose</title>
+      <para>
+        A connection must be released by calling <literal>virConnectClose</literal> when no
+        longer required. Connections are reference counted objects, so if it
+        is intended for a connection to be used from multiple threads at
+        once, each additional thread should call <literal>virConnectRef</literal> to ensure the
+        connection is not freed while still in use. Every extra call to
+        <literal>virConnectRef</literal> must be accompanied by a corresponding call to
+        <literal>virConnectClose</literal> to release the reference when no longer required. An
+        example program that uses additional references:
+      </para>
+      <example id="virtConnectClose-Example">
+        <title>Using virConnectClose with additional references</title>
+        <programlisting><![CDATA[
+/* example ex5.c */
+/* compile with: gcc -g -Wall ex5.c -o ex5 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+    /* now the connection has a single reference to it */
+
+    virConnectRef(conn);
+
+    /* now the connection has two references to it */
+
+    virConnectClose(conn);
+
+    /* now the connection has one reference */
+
+    virConnectClose(conn);
+
+    /* now the connection has no references, and has been garbage
+     * collected - it should no longer be used */
+
+    return 0;
+}
+        ]]></programlisting>
+      </example>
+      <para>
+        Also note that every other object associated with a connection
+        (virDomainPtr, virNetworkPtr, etc) will also hold a reference on the
+        connection. To avoid leaking a connection object, applications must
+        ensure all associated objects are also freed.
+      </para>
+    </section>
   </section>
 
   <section id="Application_Development_Guide-Connections-URI_Formats">
     <title>URI formats</title>
     <para>
-      TBD
+      Libvirt uses Uniform Resource Identifiers (URIs) to identify hypervisor connections. 
+      Both local and remote hypervisors are addressed by libvirt using URIs.
+      The URI scheme and path defines the hypervisor to
+      connect to, while the host part of the URI determines where it is located.
     </para>
+   <section id="Application_Development_Guide-Architecture-Local_URIs">
+      <title>Local URIs</title>
+      <para>
+        Libvirt local URIs have one of the following forms:
+      </para>
+<screen>driver:///system
+driver:///session
+driver+unix:///system
+driver+unix:///session</screen>
+      <para>
+        All other uses of the libvirt URIs are considered remote, and
+        behave as such, even if connecting to localhost. See <xref linkend="Application_Development_Guide-Architecture-Remote_URIs" /> for details on remote URIs.
+      </para>
+      <para>
+        The following drivers are currently supported:
+      </para>
+      <table id='supporteddrivers' frame='all'>
+	<title>Supported Drivers</title>
+	<tgroup cols='2' align='left' colsep='1' rowsep='1'>
+	  <colspec colname='c1' />
+	  <colspec colname='c2' />
+	  <thead>
+	    <row>
+              <entry><para>Driver</para></entry>
+              <entry><para>Description</para></entry>
+	    </row>
+	  </thead>
+	  <tbody>
+	    <row>
+              <entry>
+		<para>qemu</para>
+              </entry>
+              <entry>
+		<para>
+		  For managing qemu and KVM guests
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>xen</para>
+              </entry>
+              <entry>
+		<para>
+		  For managing old-style (Xen 3.1 and older) Xen guests
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>xenapi</para>
+              </entry>
+              <entry>
+		<para>
+		  For managing new-style Xen guests
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>uml</para>
+              </entry>
+              <entry>
+		<para>
+		  For for managing UML guests
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>lxc</para>
+              </entry>
+              <entry>
+		<para>
+		  For managing Linux Containers
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>vbox</para>
+              </entry>
+              <entry>
+		<para>
+		  For managing VirtualBox guests
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>openvz</para>
+              </entry>
+              <entry>
+		<para>
+		  For managing OpenVZ containers
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>esx</para>
+              </entry>
+              <entry>
+		<para>
+		  For managing VMware ESX guests
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>one</para>
+              </entry>
+              <entry>
+		<para>
+		  For mmanaging OpenNebula guests
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>phyp</para>
+              </entry>
+              <entry>
+		<para>
+		  For managing Power Hypervisor guests
+		</para>
+              </entry>
+	    </row>
+          </tbody>
+        </tgroup>
+      </table>
+      <para>
+        The following example shows how to local to a QEMU hypervisor using a local URI.
+      </para>
+      <example id="Example-Connect_Local">
+        <title>Connecting to a local QEMU hypervisor</title>
+        <programlisting><![CDATA[
+ /* example ex6.c */
+/* compile with: gcc -g -Wall ex6.c -o ex6 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+    virConnectClose(conn);
+    return 0;
+}
+        ]]></programlisting>
+      </example>
+    </section>
+
+    <section id="Application_Development_Guide-Architecture-Remote_URIs">
+      <title>Remote URIs</title>
+
+      <para>
+        Remote URIs have the general form ("[...]" meaning an optional part):
+      </para>
+
+      <screen>
+	driver[+transport]://[username@][hostname][:port]/[path][?extraparameters]
+      </screen>
+
+      <para>
+	Each component of the URI is described below.
+      </para>
+
+      <table id='uricomponents' frame='all'>
+	<title>URI components</title>
+	<tgroup cols='2' align='left' colsep='1' rowsep='1'>
+	  <colspec colname='c1' />
+	  <colspec colname='c2' />
+	  <thead>
+	    <row>
+              <entry><para>Component</para></entry>
+              <entry><para>Description</para></entry>
+	    </row>
+	  </thead>
+	  <tbody>
+	    <row>
+              <entry>
+		<para>driver</para>
+              </entry>
+              <entry>
+		<para>
+		  The name of the libvirt hypervisor driver to connect
+		  to. This is the same as that used in a local URI. Some
+		  examples are <literal>xen</literal>, <literal>qemu</literal>,
+		  <literal>lxc</literal>, <literal>openvz</literal>, and
+		  <literal>test</literal>. As a special case, the psuedo
+		  driver name <literal>remote</literal> can be used, which
+		  will cause the remote daemon to probe for an active
+		  hypervisor and pick one to use. As a general rule if the
+		  application knows what hypervisor it wants, it should
+		  always specify the explicit driver name and not rely
+		  on automatic probing.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>transport</para>
+              </entry>
+              <entry>
+		<para>
+		  The name of one of the data transports described earlier
+		  in this section. Possible values include
+		  <literal>tls</literal>, <literal>tcp</literal>,
+		  <literal>unix</literal>, <literal>ssh</literal> and
+		  <literal>ext</literal>. If omitted, it will default to
+		  <literal>tls</literal> if a hostname is provided, or
+		  <literal>unix</literal> if no hostname is provided.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>username</para>
+              </entry>
+              <entry>
+		<para>
+		  When using the SSH data transport this allows choice of
+		  a username that differs from the client's current login
+		  name.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>hostname</para>
+              </entry>
+              <entry>
+		<para>
+		  The fully qualified hostname of the remote machine.
+		  If using TLS with x509 certificates, or SASL with
+		  the GSSAPI/Keberos plug-in, it is critical that this
+		  hostname match the hostname used in the server's
+		  x509 certificates / Kerberos principle. Mis-matched
+		  hostnames will guarantee authentication failures.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>port</para>
+              </entry>
+              <entry>
+		<para>
+		  Rarely needed, unless SSH or libvirtd has been configured
+		  to run on a non-standard TCP port. Defaults to <literal>22</literal>
+		  for the SSH data transport, <literal>16509</literal> for the
+		  TCP data transport and <literal>16514</literal> for the TLS
+		  data transport.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>path</para>
+              </entry>
+              <entry>
+		<para>
+		  The path should be the same path used for the hypervisor
+		  driver's local URIs. For Xen, this is always just
+		  <literal>/</literal>, while for QEMU this would be
+		  <literal>/system</literal>.
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>extraparameters</para>
+              </entry>
+              <entry>
+		<para>
+		  The URI query parameters provide the mean to fine tune
+		  some aspects of the remote connection, and are discussed
+		  in depth in the next section.
+		</para>
+              </entry>
+	    </row>
+	  </tbody>
+	</tgroup>
+      </table>
+
+
+      <para>
+	Based on the information described here and with reference to the
+	hypervisor specific URIs earlier in this document, it is now possible
+	to illustrate some example remote access URIs.
+      </para>
+
+      <blockquote>
+	<para>
+	  Connect to a remote Xen hypervisor on host <replaceable>node.example.com</replaceable>
+	  using ssh tunneled data transport and ssh username <replaceable>root</replaceable>:
+	  <literal>xen+ssh://root@node.example.com/</literal>
+	</para>
+	<para>
+	  Connect to a remote QEMU hypervisor on host <replaceable>node.example.com</replaceable>
+	  using TLS with x509 certificates: <literal>qemu://node.example.com/system</literal>
+	</para>
+	<para>
+	  Connect to a remote Xen hypervisor on host <replaceable>node.example.com</replaceable>
+	  using TLS, skipping verification of the server's x509 certificate (NB: this is compromising
+	  your security): <literal>xen://node.example.com/?no_verify=1</literal>
+	</para>
+	<para>
+	  Connect to the local QEMU instances over a non-standard Unix socket (the full path to
+	  the Unix socket is supplied explicitly in this case):
+	  <literal>qemu+unix:///system?socket=/opt/libvirt/run/libvirt/libvirt-sock</literal>
+	</para>
+	<para>
+	  Connect to a libvirtd daemon offering unencrypted TCP/IP connections on an alternative
+	  TCP port 5000 and use the test driver with default configuration:
+	  <literal>test+tcp://node.example.com:5000/default</literal>
+	</para>
+      </blockquote>
+
+      <formalpara>
+	<title>Extra parameters</title>
+	
+	<para>Extra parameters can be added to remote URIs as part of the query string (the part following "?"). Remote URIs understand the extra parameters shown below. Any others are passed unmodified through to the backend. Note that parameter values must be URI-escaped. Refer to <ulink url="http://xmlsoft.org/html/libxml-uri.html#xmlURIEscapeStr"/> for more information.
+	</para>
+      </formalpara>
+
+      <table id='remote_URI' frame='none'><title>Extra parameters for remote URIs</title>
+	<tgroup cols='3' align='left' colsep='1' rowsep='1'>
+	  <colspec colname='c1' colwidth="1"/>
+	  <colspec colname='c2' colwidth="1"/>
+	  <colspec colname='c3' colwidth="3"/>
+	  <thead>
+	    <row>
+              <entry><para><emphasis role="bold">Name</emphasis></para></entry>
+              <entry><para><emphasis role="bold">Transports</emphasis></para></entry>
+              <entry><para><emphasis role="bold">Description</emphasis></para></entry>
+	    </row>
+	  </thead>
+	  <tbody>
+	    <row>
+              <entry><para><literal>name</literal></para></entry>
+              <entry><para><replaceable>any transport</replaceable></para></entry>
+              <entry>
+		<para>The local hypervisor URI passed to the remote virConnectOpen function. This URI is
+		  normally formed by removing transport, hostname, port number, username and extra
+		  parameters from the remote URI, but in certain very complex cases it may be necessary
+		  to supply the name explicitly. Example: <literal>name=qemu:///system</literal>
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry><para><literal>command</literal></para></entry>
+              <entry><para>ssh, ext</para></entry>
+              <entry>
+		<para>
+		  The external command. For ext transport this is required. For ssh the default
+		  is ssh. The PATH is searched for the command. Example: <literal>command=/opt/openssh/bin/ssh</literal>
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry><para><application>socket</application></para></entry>
+              <entry>
+		<para>unix, ssh</para>
+              </entry>
+              <entry>
+		<para>
+		  The external command. For ext transport this is required. For ssh
+		  the default is <literal>ssh</literal>. The PATH is searched for
+		  the command. Example: <literal>socket=/opt/libvirt/run/libvirt/libvirt-sock</literal></para>
+              </entry>
+	    </row>
+	    <row>
+              <entry><para><application>netcat</application></para></entry>
+              <entry>
+		<para>ssh</para>
+              </entry>
+              <entry>
+		<para>The name of the netcat command on the remote machine. The default
+		  is nc. For ssh transport, libvirt constructs an ssh command which looks like:
+		  <screen>
+		    command -p port [-l username] hostname netcat -U socket
+		  </screen>
+		  Where port, username, hostname can be specified as part of the remote URI,
+		  and command, netcat and socket come from extra parameters (or sensible
+		  defaults). Example: <literal>netcat=/opt/netcat/bin/nc</literal>
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry><para><application>no_verify</application></para></entry>
+              <entry>
+		<para>tls</para>
+              </entry>
+              <entry>
+		<para>Client checks of the server's certificate are disable if a non-zero value is set. Note that to disable server checks of the client's certificate or IP address you must change the libvirtd configuration <!--(refer to <xref linkend=""/>)-->. Example: <literal>no_verify=1</literal>
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry><para><application>no_tty</application></para></entry>
+              <entry>
+		<para>ssh</para>
+              </entry>
+              <entry>
+		<para>If set to a non-zero value, this stops ssh from asking for a password if it cannot log in to the remote machine automatically (For example, when using a ssh-agent). Use this when you don't have access to a terminal - for example in graphical programs which use libvirt. Example: <literal>no_tty=1</literal>
+		</para>
+              </entry>
+	    </row>
+	  </tbody>
+	</tgroup>
+      </table>
+      <para>
+        The following example shows how to local to a QEMU hypervisor using a remote URI.
+      </para>
+      <example id="Example-Connect_Remote">
+        <title>Connecting to a remote QEMU hypervisor</title>
+        <programlisting><![CDATA[
+/* example ex7.c */
+/* compile with: gcc -g -Wall ex7.c -o ex7 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+
+    conn = virConnectOpen("qemu+tls://host2/system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu+tls://host2/system\n");
+        return 1;
+    }
+    virConnectClose(conn);
+    return 0;
+}
+        ]]></programlisting>
+      </example>
+    </section>
   </section>
 
   <section id="Application_Development_Guide-Connections-Capability_Info">
     <title>Capability information</title>
     <para>
-      The capabilities XML format provides information about a connection.
-      In particular, it describes the capabilities of the virtualization host,
-      the virtualization driver, and the kinds of guests that
-      the virtualization technology can launch.  Note that the capabilities XML can
-      (and does) vary based on the libvirt driver in use.  An example capabilities
-      XML looks like:
+      The <literal>virConnectGetCapabilities</literal> API call can be used to obtain
+      information about the capabilities of the virtualization host.  It
+      takes a connection pointer in and, if successful, returns a string
+      containing the capabilities XML (described below).  If an error
+      occurred, NULL will be returned instead.  It is the responsibility of the
+      caller to free the memory returned from this API call. The following
+      code demonstrates the use of <literal>virConnectGetCapabilities</literal>:
+    </para>
+      <example id="Example-ConnectGetCapabilities">
+        <title>Using virConnectGetCapabilities</title>
+        <programlisting><![CDATA[
+/* example ex8.c */
+/* compile with: gcc -g -Wall ex8.c -o ex8 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    char *caps;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    caps = virConnectGetCapabilities(conn);
+    fprintf(stdout, "Capabilities:\n%s\n", caps);
+    free(caps);
+
+    virConnectClose(conn);
+    return 0;
+}
+        ]]></programlisting>
+      </example>
+    <para>
+      The capabilities XML format provides information about the host
+      virtualization technology. In particular, it describes the
+      capabilities of the virtualization host, the virtualization driver,
+      and the kinds of guests that the virtualization technology can
+      launch. Note that the capabilities XML can (and does) vary based on
+      the libvirt driver in use. An example capabilities XML looks like:
     </para>
     <example>
       <title>Example QEMU driver capabilities</title>
@@ -174,7 +968,6 @@
  ]]>
       </programlisting>
     </example>
-
     <para>
       (the rest of the discussion will refer back to this XML using XPath notation).
       In the capabilities XML, there is always the /host sub-document, and zero or
@@ -184,7 +977,21 @@
     </para>
 
     <para>
-    The /host sub-document describes the capabilities of the host.
+      The /host sub-document describes the capabilities of the host.
+    </para>
+    <para>
+      /host/uuid shows the UUID of the host.  This is derived from the
+      SMBIOS UUID if it is available and valid, or can be overridden in
+      libvirtd.conf with a custom value.  If neither of the above are
+      properly set, a temporary UUID will be generated each time that
+      libvirtd is restarted.
+    </para>
+    <para>
+      The /host/cpu sub-document describes the capabilities of the host's
+      CPUs.  It is used by libvirt when deciding whether a guest can be
+      properly started on this particular machine, and is also consulted
+      during live migration to determine if the destination machine supplies
+      the necessary flags to continue to run the guest.
     </para>
     <para>
       /host/cpu/arch is a required XML node that describes the underlying host
@@ -198,42 +1005,66 @@
       report on the presence or lack of the pae flag.
     </para>
     <para>
-      /host/migration_features is an optional sub-document that describes the
-      migration features that this driver supports on this host (if any).  If this
-      sub-document does not exist, then migration is not supported.  As of this
-      writing, only the xen and qemu drivers support migration.
-      The /host/migration_features/live XML node exists if the driver supports live
-      migration; both xen and qemu support live migration.
+      /host/cpu/arch is a required XML node that describes the underlying
+      host CPU architecture. As of this writing, all libvirt drivers
+      initialize this from the output of uname(2).
     </para>
     <para>
-      /host/migration_features/uri_transports is an optional sub-document that
-      describes alternate migration connection mechanisms.  These alternate
-      connection mechanisms can be useful on multi-homed virtualization systems.
-      For instance, the virsh migrate command might connect to the source of the
-      migration via 10.0.0.1, and the destination of the migration via 10.0.0.2.
-      However, due to security policy, the source of the migration might only be
-      allowed to talk directly to the destination of the migration via
-      192.168.0.0/24.  In this case, using the alternate migration connection
-      mechanism would allow this migration to succeed.  As of this writing, the xen
-      driver supports the alternate migration mechanism "xenmigr", while the qemu
-      driver supports the alternate migration mechanism "tcp".  Please see the
-      documentation on migration (FIXME: where is this?) for more information.
+      /host/cpu/model is an optional element that describes the CPU model
+      that the host CPUs most closely resemble.  The list of CPU models
+      that libvirt currently know about are in the cpu_map.xml file.
     </para>
     <para>
-      The /host/topology sub-document describes the NUMA topology of the host
-      machine; each NUMA node is represented by a /host/topology/cells/cell, and
-      describes which CPUs are in that NUMA node.  If the host machine is a UMA
-      (non-NUMA) machine, then there will be only one cell and all CPUs will be
-      in this cell.  This is very hardware-specific, so will necessarily vary
-      between different machines.
+      /host/cpu/feature are zero or more elements that describe
+      additional CPU features that the host CPUs have that are not covered in
+      /host/cpu/model
     </para>
     <para>
-      /host/secmodel is an optional sub-document that describes the security model
-      in use on the host.  /host/secmodel/model shows the name of the security model
-      while /host/secmodel/doi shows the Domain Of Interpretation.  As of this
-      writing, only the qemu driver supports the security model, and only the
-      selinux model is implemented.  For more information about security, please
-      see the Security section. (FIXME: where is this?)
+      /host/cpu/features is an optional sub-document that describes
+      additional cpu features present on the host. As of this writing, it
+      is only used by the xen driver to report on the presence or lack of
+      the svm or vmx flag, and to report on the presence or lack of the pae flag.
+    </para>
+    <para>
+      The /host/migration_features is an optional sub-document that
+      describes the migration features that this driver supports on this
+      host (if any). If this sub-document does not exist, then migration is
+      not supported. As of this writing, the xen, qemu, and esx drivers
+      support migration.
+    </para>
+    <para>
+      /host/migration_features/live XML node exists if the driver
+  supports live migration
+    </para>
+    <para>
+      /host/migration_features/uri_transports is an optional sub-document
+      that describes alternate migration connection mechanisms. These
+      alternate connection mechanisms can be useful on multi-homed
+      virtualization systems. For instance, the virsh migrate command might
+      connect to the source of the migration via 10.0.0.1, and the
+      destination of the migration via 10.0.0.2. However, due to security
+      policy, the source of the migration might only be allowed to talk
+      directly to the destination of the migration via 192.168.0.0/24. In
+      this case, using the alternate migration connection mechanism would
+      allow this migration to succeed. As of this writing, the xen driver
+      supports the alternate migration mechanism "xenmigr", while the qemu
+      driver supports the alternate migration mechanism "tcp". Please see
+      the documentation on migration for more information.
+    </para>
+    <para>
+      The /host/topology sub-document describes the NUMA topology of the
+      host machine; each NUMA node is represented by a
+      /host/topology/cells/cell, and describes which CPUs are in that NUMA
+      node. If the host machine is a UMA (non-NUMA) machine, then there will
+      be only one cell and all CPUs will be in this cell. This is very
+      hardware-specific, so will necessarily vary between different machines.
+    </para>
+    <para>
+      /host/secmodel is an optional sub-document that describes the security
+      model in use on the host. /host/secmodel/model shows the name of the
+      security model while /host/secmodel/doi shows the Domain Of
+      Interpretation. For more information about security, please see the
+      Security section.
     </para>
     <para>
       Each /guest sub-document describes a kind of guest that this host driver can
@@ -244,16 +1075,17 @@
       /guest/os_type is a required element that describes the type of guest.
     </para>
     <para>
-      qemu driver: always "hvm" for a fully-virtualized guest
+      qemu driver: always "hvm"
       xen driver: either "xen" for a paravirtualized guest or "hvm" for a
       fully virtualized guest
       uml driver: always "uml"
       lxc driver: always "exe"
-      vbox driver: always "hvm" for a fully-virtualized guest
+      vbox driver: always "hvm"
       openvz driver: always "exe"
       one driver: always "hvm"
       esx driver: Not supported at this time
     </para>
+<remark>DFJ marked up to this point from new content</remark>
     <para>
       /guest/arch is the root of an XML sub-document describing various virtual
       hardware aspects of this guest type.  It has a single attribute called
@@ -299,6 +1131,7 @@
       and whether they can be toggled on or off.
       FIXME: describe more about this
     </para>
+
   </section>
 
   <section id="Application_Development_Guide-Connections-Host_Info">
