@@ -970,74 +970,74 @@ int main(int argc, char *argv[])
     </example>
     <para>
       (the rest of the discussion will refer back to this XML using XPath notation).
-      In the capabilities XML, there is always the /host sub-document, and zero or
-      more /guest sub-documents (while zero guest sub-documents are allowed,
+      In the capabilities XML, there is always the <literal>/host</literal> sub-document, and zero or
+      more <literal>/guest</literal> sub-documents (while zero guest sub-documents are allowed,
       this means that no guests of this particular driver can be started on this
       particular host).
     </para>
 
     <para>
-      The /host sub-document describes the capabilities of the host.
+      The <literal>/host</literal> sub-document describes the capabilities of the host.
     </para>
     <para>
-      /host/uuid shows the UUID of the host.  This is derived from the
+      <literal>/host/uuid</literal> shows the UUID of the host.  This is derived from the
       SMBIOS UUID if it is available and valid, or can be overridden in
       libvirtd.conf with a custom value.  If neither of the above are
       properly set, a temporary UUID will be generated each time that
       libvirtd is restarted.
     </para>
     <para>
-      The /host/cpu sub-document describes the capabilities of the host's
+      The <literal>/host/cpu</literal> sub-document describes the capabilities of the host's
       CPUs.  It is used by libvirt when deciding whether a guest can be
       properly started on this particular machine, and is also consulted
       during live migration to determine if the destination machine supplies
       the necessary flags to continue to run the guest.
     </para>
     <para>
-      /host/cpu/arch is a required XML node that describes the underlying host
+      <literal>/host/cpu/arch</literal> is a required XML node that describes the underlying host
       CPU architecture.  As of this writing, all libvirt drivers initialize this
       from the output of uname(2).
     </para>
     <para>
-      /host/cpu/features is an optional sub-document that describes additional cpu
+      <literal>/host/cpu/features</literal> is an optional sub-document that describes additional cpu
       features present on the host.  As of this writing, it is only used by the
       xen driver to report on the presence or lack of the svm or vmx flag, and to
       report on the presence or lack of the pae flag.
     </para>
     <para>
-      /host/cpu/arch is a required XML node that describes the underlying
+      <literal>/host/cpu/arch</literal> is a required XML node that describes the underlying
       host CPU architecture. As of this writing, all libvirt drivers
       initialize this from the output of uname(2).
     </para>
     <para>
-      /host/cpu/model is an optional element that describes the CPU model
+      <literal>/host/cpu/model</literal> is an optional element that describes the CPU model
       that the host CPUs most closely resemble.  The list of CPU models
       that libvirt currently know about are in the cpu_map.xml file.
     </para>
     <para>
-      /host/cpu/feature are zero or more elements that describe
+      <literal>/host/cpu/feature</literal> are zero or more elements that describe
       additional CPU features that the host CPUs have that are not covered in
-      /host/cpu/model
+      <literal>/host/cpu/model</literal>
     </para>
     <para>
-      /host/cpu/features is an optional sub-document that describes
+      <literal>/host/cpu/features</literal> is an optional sub-document that describes
       additional cpu features present on the host. As of this writing, it
       is only used by the xen driver to report on the presence or lack of
       the svm or vmx flag, and to report on the presence or lack of the pae flag.
     </para>
     <para>
-      The /host/migration_features is an optional sub-document that
+      The <literal>/host/migration_features</literal> is an optional sub-document that
       describes the migration features that this driver supports on this
       host (if any). If this sub-document does not exist, then migration is
       not supported. As of this writing, the xen, qemu, and esx drivers
       support migration.
     </para>
     <para>
-      /host/migration_features/live XML node exists if the driver
+      <literal>/host/migration_features/live</literal> XML node exists if the driver
   supports live migration
     </para>
     <para>
-      /host/migration_features/uri_transports is an optional sub-document
+      <literal>/host/migration_features/uri_transports</literal> is an optional sub-document
       that describes alternate migration connection mechanisms. These
       alternate connection mechanisms can be useful on multi-homed
       virtualization systems. For instance, the virsh migrate command might
@@ -1052,84 +1052,169 @@ int main(int argc, char *argv[])
       the documentation on migration for more information.
     </para>
     <para>
-      The /host/topology sub-document describes the NUMA topology of the
+      The <literal>/host/topology</literal> sub-document describes the NUMA topology of the
       host machine; each NUMA node is represented by a
-      /host/topology/cells/cell, and describes which CPUs are in that NUMA
+      <literal>/host/topology/cells/cell</literal>, and describes which CPUs are in that NUMA
       node. If the host machine is a UMA (non-NUMA) machine, then there will
       be only one cell and all CPUs will be in this cell. This is very
       hardware-specific, so will necessarily vary between different machines.
     </para>
     <para>
-      /host/secmodel is an optional sub-document that describes the security
-      model in use on the host. /host/secmodel/model shows the name of the
-      security model while /host/secmodel/doi shows the Domain Of
+      <literal>/host/secmodel</literal> is an optional sub-document that describes the security
+      model in use on the host. <literal>/host/secmodel/model</literal> shows the name of the
+      security model while <literal>/host/secmodel/doi</literal> shows the Domain Of
       Interpretation. For more information about security, please see the
       Security section.
     </para>
     <para>
-      Each /guest sub-document describes a kind of guest that this host driver can
+      Each <literal>/guest</literal> sub-document describes a kind of guest that this host driver can
       start.  This description includes the architecture of the guest (i.e. i686)
       along with the ABI provided to the guest (i.e. hvm, xen, or uml).
     </para>
     <para>
-      /guest/os_type is a required element that describes the type of guest.
+      <literal>/guest/os_type</literal> is a required element that describes the type of guest.
     </para>
-    <para>
-      qemu driver: always "hvm"
-      xen driver: either "xen" for a paravirtualized guest or "hvm" for a
-      fully virtualized guest
-      uml driver: always "uml"
-      lxc driver: always "exe"
-      vbox driver: always "hvm"
-      openvz driver: always "exe"
-      one driver: always "hvm"
-      esx driver: Not supported at this time
-    </para>
+    <table id='guesttypes' frame='all'>
+      <title>Guest Types</title>
+        <tgroup cols='2' align='left' colsep='1' rowsep='1'>
+	  <colspec colname='c1' />
+	  <colspec colname='c2' />
+	  <thead>
+	    <row>
+              <entry><para>Driver</para></entry>
+              <entry><para>Guest Type</para></entry>
+	    </row>
+	  </thead>
+	  <tbody>
+	    <row>
+              <entry>
+		<para>qemu</para>
+              </entry>
+              <entry>
+		<para>
+		  Always "hvm"
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>xen</para>
+              </entry>
+              <entry>
+		<para>
+		  Either "xen" for a paravirtualized guest or "hvm" for a fully virtualized guest
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>uml</para>
+              </entry>
+              <entry>
+		<para>
+		  Always "uml"
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>lxc</para>
+              </entry>
+              <entry>
+		<para>
+		  Always "exe"
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>vbox</para>
+              </entry>
+              <entry>
+		<para>
+		  Always "hvm"
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>openvz</para>
+              </entry>
+              <entry>
+		<para>
+		  Always "exe"
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>one</para>
+              </entry>
+              <entry>
+		<para>
+		  Always "hvm"
+		</para>
+              </entry>
+	    </row>
+	    <row>
+              <entry>
+		<para>ex</para>
+              </entry>
+              <entry>
+		<para>
+		  Not supported at this time
+		</para>
+              </entry>
+	    </row>
+          </tbody>
+        </tgroup>
+      </table>
 <remark>DFJ marked up to this point from new content</remark>
     <para>
-      /guest/arch is the root of an XML sub-document describing various virtual
+      <literal>/guest/arch</literal> is the root of an XML sub-document describing various virtual
       hardware aspects of this guest type.  It has a single attribute called
       "name", which can be used to refer back to this sub-document.
     </para>
     <para>
-      /guest/arch/wordsize is a required element that describes how many bits per
+      <literal>/guest/arch/wordsize</literal> is a required element that describes how many bits per
       word this guest type uses.  This is typically 32 or 64.
     </para>
     <para>
-      /guest/arch/emulator is an optional element that describes the default path
-      to the emulator for this guest type.  Note that the emulator can be
-      overridden by the /guest/arch/domain/emulator element (described below) for
-      guest types that need alternate binaries.
+      <literal>/guest/arch/emulator</literal> is an optional element that describes the
+      default path to the emulator for this guest type. Note that the
+      emulator can be overridden by the <literal>/guest/arch/domain/emulator</literal>
+      element (described below) for guest types that need alternate binaries.
     </para>
     <para>
-      /guest/arch/loader is an optional element that describes the default path to
+      <literal>/guest/arch/loader</literal> is an optional element that describes the default path to
       the firmware loader for this guest type.  Note that the default loader
-      path can be overridden by the /guest/arch/domain/loader element (described
+      path can be overridden by the <literal>/guest/arch/domain/loader</literal> element (described
       below) for guest types that use alternate loaders.  At present, this is
       only used by the xen driver for HVM guests.
     </para>
     <para>
-      There can be zero or more /guest/arch/machine elements that describe the
-      default types of machines that this guest emulator can emulate.  Note that
-      these default machine types can be overridden by the
-      /guest/arch/domain/machine elements (described below) for guest types that
-      provide alternate machine types.  Typical values for this are "pc", and
-      "isapc", meaning a regular PCI based PC, and an older, ISA based PC,
-      respectively.
+      There can be zero or more <literal>/guest/arch/machine</literal> elements that describe
+      the default types of machines that this guest emulator can
+      emulate. These "machines" typically represent the ABI or hardware
+      interface that a guest can be started with.  Note that these
+      machine types can be overridden by the <literal>/guest/arch/domain/machine</literal>
+      elements (described below) for virtualization technologies that
+      provide alternate machine types. Typical values for this are "pc",
+      and "isapc", meaning a regular PCI based PC, and an older, ISA based
+      PC, respectively.
     </para>
     <para>
-      There can be zero or more /guest/arch/domain XML sub-trees (although with
+      There can be zero or more <literal>/guest/arch/domain</literal> XML sub-trees (although with
       zero /guest/arch/domain XML sub-trees, no guests of this driver can be
-      started).  Each /guest/arch/domain XML sub-tree has optional &lt;emulator&gt;,
+      started).  Each <literal>/guest/arch/domain</literal> XML sub-tree has optional &lt;emulator&gt;,
       &lt;loader&gt;, and &lt;machine&gt; elements that override the respective defaults
       specified above.  For any of the elements that are missing, the
       default values are used.
     </para>
     <para>
-      The /guest/features optional sub-document describes various additional guest
-      features that can be enabled or disabled, along with their default state
-      and whether they can be toggled on or off.
-      FIXME: describe more about this
+      The <literal>/guest/features</literal> optional sub-document describes various additional
+      guest features that can be enabled or disabled, along with their
+      default state and whether they can be toggled on or off.
     </para>
 
   </section>
@@ -1137,8 +1222,368 @@ int main(int argc, char *argv[])
   <section id="Application_Development_Guide-Connections-Host_Info">
     <title>Host information</title>
     <para>
-      TBD
+      There are various APIs that can be used to get information about the
+      virtualization host, including the hostname, maximum support guest
+      CPUs, etc.
     </para>
+    <section>
+      <title>virConnectGetHostname</title>
+      <para>
+        The <command>virConnectGetHostname</command> API call can be used to obtain the hostname
+        of the virtualization host as returned by gethostname(2).  It takes a
+        connection pointer in and, if successful, returns a string
+        containing the hostname. If an error occurred, NULL will be returned
+        instead.  It is the responsibility of the caller to free the memory
+        returned from this API call. The following code demonstrates the use of
+        <command>virConnectGetHostname</command>:
+      </para>
+      <example id="Example-ConnectGetHostname">
+        <title>Using virConnectGetHostname</title>
+        <programlisting><![CDATA[
+/* example ex9.c */
+/* compile with: gcc -g -Wall ex9.c -o ex9 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    char *host;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    host = virConnectGetHostname(conn);
+    fprintf(stdout, "Hostname:%s\n", host);
+    free(caps);
+
+    virConnectClose(conn);
+    return 0;
+}
+]]></programlisting>
+      </example>
+    </section>
+    <section>
+      <title>virConnectGetMaxVcpus</title>
+      <para>
+        The <command>virConnectGetMaxVcpus</command> API call can be used to obtain the maximum
+        number of virtual CPUs per-guest the underlying virtualization
+        technology supports.  It takes a connection pointer and a
+        virtualization "type" as input (which can be NULL), and if successful,
+        returns the number of virtual CPUs supported.  If an error occurred,
+        -1 is returned instead.  The following code demonstrates the use of
+        <command>virConnectGetMaxVcpus</command>:
+      </para>
+      <example id="Example-ConnectGetMaxVcpus">
+        <title>Using virConnectGetMaxVcpus</title>
+        <programlisting><![CDATA[
+/* example ex10.c */
+/* compile with: gcc -g -Wall ex10.c -o ex10 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    int vcpus;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    vcpus = virConnectGetMaxVcpus(conn, NULL);
+    fprintf(stdout, "Maximum support virtual CPUs: %d\n", vcpus);
+    free(caps);
+
+    virConnectClose(conn);
+    return 0;
+}
+]]></programlisting>
+      </example>
+    </section>
+    <section>
+      <title>virNodeGetFreeMemory</title>
+      <para>
+        The <command>virNodeGetFreeMemory</command> API call can be used to obtain the total
+        amount of free memory on the virtualization host.  It takes a
+        connection pointer as input, and if successful returns the amount of
+        free memory as an unsigned long long.  If an error occurred, 0 is
+        returned instead.  The following code demonstrates the use of <command>virNodeGetFreeMemory</command>:
+      </para>
+      <example id="Example-NodeGetFreeMemory">
+        <title>Using virNodeGetFreeMemory</title>
+        <programlisting><![CDATA[
+/* example ex11.c */
+/* compile with: gcc -g -Wall ex11.c -o ex11 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    int vcpus;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    fprintf(stdout, "Node free memory: %llu\n", virNodeGetFreeMemory(conn));
+
+    virConnectClose(conn);
+    return 0;
+}
+]]></programlisting>
+      </example>
+    </section>
+    <section>
+      <title>virNodeGetInfo</title>
+      <para>
+        The <command>virNodeGetInfo</command> API call can be used to obtain various information
+        about the virtualization host.  It takes a connection pointer and a
+        virNodeInfo pointer (allocated by the caller) as input, and if
+        successful returns 0 and fills in the virNodeInfo structure.  If an
+        error occurred, -1 is returned instead.  The virNodeInfo structure
+        contains the following members:
+      </para>
+      <table id='virNodeInfo-structure-mem' frame='all'>
+        <title>virNodeInfo structure members</title>
+          <tgroup cols='2' align='left' colsep='1' rowsep='1'>
+	    <colspec colname='c1' />
+	    <colspec colname='c2' />
+	    <thead>
+	      <row>
+                <entry><para>Member</para></entry>
+                <entry><para>Description</para></entry>
+	      </row>
+	    </thead>
+	    <tbody>
+	      <row>
+                <entry>
+		  <para>char model[32]</para>
+                </entry>
+                <entry>
+		  <para>
+		    string indicating the CPU model
+		  </para>
+                </entry>
+	      </row>
+	      <row>
+                <entry>
+		  <para>unsigned long memory</para>
+                </entry>
+                <entry>
+		  <para>
+		    memory size in kilobytes
+		  </para>
+                </entry>
+	      </row>
+	      <row>
+                <entry>
+		  <para>unsigned int cpus</para>
+                </entry>
+                <entry>
+		  <para>
+		    the number of active CPUs
+		  </para>
+                </entry>
+	      </row>
+	      <row>
+                <entry>
+		  <para>unsigned int mhz</para>
+                </entry>
+                <entry>
+		  <para>
+		    expected CPU frequency
+		  </para>
+                </entry>
+	      </row>
+	      <row>
+                <entry>
+		  <para>unsigned int nodes</para>
+                </entry>
+                <entry>
+		  <para>
+		    the number of NUMA nodes, 1 for uniform memory access
+		  </para>
+                </entry>
+	      </row>
+	      <row>
+                <entry>
+		  <para>unsigned int sockets</para>
+                </entry>
+                <entry>
+		  <para>
+		    number of CPU sockets per node
+		  </para>
+                </entry>
+	      </row>
+	      <row>
+                <entry>
+		  <para>unsigned int cores</para>
+                </entry>
+                <entry>
+		  <para>
+		    number of cores per socket
+		  </para>
+                </entry>
+	      </row>
+	      <row>
+                <entry>
+		  <para>unsigned int threads</para>
+                </entry>
+                <entry>
+		  <para>
+		    number of threads per core
+		  </para>
+                </entry>
+	      </row>
+            </tbody>
+          </tgroup>
+        </table>
+      <para>
+        The following code demonstrates the use of <command>virNodeGetInfo</command>:
+      </para>
+      <example id="Example-NodeGetInfo">
+        <title>Using virNodeGetInfo</title>
+        <programlisting><![CDATA[
+/* example ex12.c */
+/* compile with: gcc -g -Wall ex12.c -o ex12 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    virNodeInfo nodeinfo;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    virNodeGetInfo(conn, &nodeinfo);
+
+    fprintf(stdout, "Model: %s\n", nodeinfo.model);
+    fprintf(stdout, "Memory size: %lukb\n", nodeinfo.memory);
+    fprintf(stdout, "Number of CPUs: %u\n", nodeinfo.cpus);
+    fprintf(stdout, "MHz of CPUs: %u\n", mhz);
+    fprintf(stdout, "Number of NUMA nodes: %u\n", nodeinfo.nodes);
+    fprintf(stdout, "Number of CPU sockets: %u\n", nodeinfo.sockets);
+    fprintf(stdout, "Number of CPU cores per socket: %u\n", nodeinfo.cores);
+    fprintf(stdout, "Number of CPU threads per core: %u\n", nodeinfo.threads);
+
+    virConnectClose(conn);
+    return 0;
+}
+]]></programlisting>
+      </example>
+    </section>
+    <section>
+      <title>virNodeGetCellsFreeMemory</title>
+      <para>
+        The <command>virNodeGetCellsFreeMemory</command> API call can be used to obtain the
+        amount of free memory (in kilobytes) in some or all of the NUMA
+        nodes in the system.  It takes as input a connection pointer, a
+        pre-allocated array of unsigned long longs, and a maximum number of
+        cells to retrieve data from (usually the size of the unsigned long
+        long array).  If successful, the array elements are filled in with the
+        amount of free memory in each node, and the number of filled nodes
+        is returned.  On failure -1 is returned.  The following code
+        demonstrates the use of <command>virNodeGetCellsFreeMemory</command>:
+      </para>
+      <example id="Example-NodeGetCellsFreeMemory">
+        <title>Using virNodeGetCellsFreeMemory</title>
+        <programlisting><![CDATA[
+/* example ex13.c */
+/* compile with: gcc -g -Wall ex13.c -o ex13 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    virNodeInfo nodeinfo;
+    unsigned long long *freemem;
+    int i;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    /* first, get the node info.  This includes the number of nodes
+     * in the host in nodeinfo.nodes
+     */
+    virNodeGetInfo(conn, &nodeinfo);
+
+    /* allocate an array to hold all of the node free memory information */
+    freemem = malloc(nodeinfo.nodes * sizeof(unsigned long long));
+
+    /* fetch all the numa node free memory information from libvirt */
+    virNodeGetCellsFreeMemory(conn, freemem, 0, nodeinfo.nodes);
+
+    for (i = 0; i < nodeinfo.nodes; i++)
+    	fprintf(stdout, "Node %d: %llukb free memory\n", i, freemem[i]);
+
+    free(freemem);
+
+    virConnectClose(conn);
+    return 0;
+}
+]]></programlisting>
+      </example>
+    </section>
+    <section>
+      <title>virConnectGetType</title>
+      <para>
+        The <command>virConnectGetType</command> API call can be used to obtain the type of
+        virtualization in use on this connection.  It takes a connection
+        pointer as input, and if successful returns a string representing
+        the type of virtualization in use.  This string should <emphasis>not</emphasis> be
+        freed by the caller.  If an error occurred, NULL will be returned
+        instead. The following code demonstrates the use of <command>virConnectGetType</command>:
+      </para>
+      <example id="Example-ConnectGetType">
+        <title>Using virConnectGetType</title>
+        <programlisting><![CDATA[
+/* example ex14.c */
+/* compile with: gcc -g -Wall ex14.c -o ex14 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    fprintf(stdout, "Virtualization type: %s\n", virConnectGetType(conn));
+
+    virConnectClose(conn);
+    return 0;
+}
+]]></programlisting>
+      </example>
+    </section>
   </section>
 
   <section id="Application_Development_Guide-Connections-Event_Loop">
