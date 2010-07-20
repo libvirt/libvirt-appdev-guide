@@ -58,8 +58,7 @@
       </para>
       <example>
         <title>Using virConnectOpen</title>
-        <programlisting><![CDATA[
-/* example ex1.c */
+        <programlisting><![CDATA[/* example ex1.c */
 /* compile with: gcc -g -Wall ex1.c -o ex -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,8 +75,7 @@ int main(int argc, char *argv[])
     }
     virConnectClose(conn);
     return 0;
-}
-        ]]></programlisting>
+}]]></programlisting>
       </example>
       <para>
         The above example opens up a read-write connection to the system qemu hypervisor
@@ -98,8 +96,7 @@ int main(int argc, char *argv[])
       </para>
       <example>
         <title>Using virConnectOpenReadOnly</title>
-        <programlisting><![CDATA[
-/* example ex2.c */
+        <programlisting><![CDATA[/* example ex2.c */
 /* compile with: gcc -g -Wall ex2.c -o ex2 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -116,8 +113,7 @@ int main(int argc, char *argv[])
     }
     virConnectClose(conn);
     return 0;
-}
-        ]]></programlisting>
+}]]></programlisting>
       </example>
       <para>
         The above example opens up a read-only connection to the system qemu hypervisor
@@ -142,8 +138,7 @@ int main(int argc, char *argv[])
       </para>
       <example id="virtConnectOpenAuth-Example1">
         <title>Using virConnectOpenAuth</title>
-        <programlisting><![CDATA[
-/* example ex3.c */
+        <programlisting><![CDATA[/* example ex3.c */
 /* compile with: gcc -g -Wall ex3.c -o ex3 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -160,8 +155,7 @@ int main(int argc, char *argv[])
     }
     virConnectClose(conn);
     return 0;
-}
-        ]]></programlisting>
+}]]></programlisting>
       </example>
       <para>
         To test the above program, the following configuration must be present:
@@ -169,17 +163,13 @@ int main(int argc, char *argv[])
       <orderedlist>
         <listitem>
           <para><filename>/etc/libvirt/libvirtd.conf</filename></para>
-          <screen>
-listen_tls = 0
+          <screen>listen_tls = 0
 listen_tcp = 1
-auth_tcp = "sasl"
-          </screen>
+auth_tcp = "sasl"</screen>
         </listitem>
         <listitem>
           <para><filename>/etc/sasl2/libvirt.conf</filename></para>
-          <screen>
-mech_list: digest-md5
-          </screen>
+          <screen>mech_list: digest-md5</screen>
         </listitem>
         <listitem>
           <para>A virt user has been added to the SASL database:</para>
@@ -199,8 +189,7 @@ mech_list: digest-md5
       </para>
       <example id="virtConnectOpenAuth-Example2">
         <title>Using a custom credential callback with virConnectOpenAuth</title>
-        <programlisting><![CDATA[
-/* example ex4.c */
+        <programlisting><![CDATA[/* example ex4.c */
 /* compile with: gcc -g -Wall ex4.c -o ex4 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -261,24 +250,21 @@ int main(int argc, char *argv[])
     }
     virConnectClose(conn);
     return 0;
-}
-        ]]></programlisting>
+}]]></programlisting>
       </example>
       <para>
         The same configuration as <xref linkend="virtConnectOpenAuth-Example1" /> must be present in order to test
         <xref linkend="virtConnectOpenAuth-Example2" />.  The first thing to note here is the use of a
         <literal>virConnectAuth</literal> structure, which looks like the following:
       </para>
-        <programlisting><![CDATA[
-struct _virConnectAuth {
+        <programlisting><![CDATA[struct _virConnectAuth {
     int *credtype; /* List of supported virConnectCredentialType values */
     unsigned int ncredtype;
 
     virConnectAuthCallbackPtr cb; /* Callback used to collect credentials */
     void *cbdata;
 };
-typedef struct _virConnectAuth virConnectAuth;
-        ]]></programlisting>
+typedef struct _virConnectAuth virConnectAuth;]]></programlisting>
       <para>
         The credtype member points to an array of integers that represent the
         type of credentials this callback is willing to support.  In <xref linkend="virtConnectOpenAuth-Example2" />
@@ -288,11 +274,9 @@ typedef struct _virConnectAuth virConnectAuth;
         member is a function pointer which specifies the callback that will be
         used when necessary; its signature must be:
       </para>
-        <programlisting><![CDATA[
-typedef int (*virConnectAuthCallbackPtr)(virConnectCredentialPtr cred,
+        <programlisting><![CDATA[typedef int (*virConnectAuthCallbackPtr)(virConnectCredentialPtr cred,
                                          unsigned int ncred,
-                                         void *cbdata);
-        ]]></programlisting>
+                                         void *cbdata);]]></programlisting>
       <para>
         Finally, the cbdata member is a pointer that can point to additional
         data needed by the callback; in <xref linkend="virtConnectOpenAuth-Example2" />, this is not used so it is
@@ -313,8 +297,7 @@ typedef int (*virConnectAuthCallbackPtr)(virConnectCredentialPtr cred,
         the <literal>virConnectCredential</literal> structures and collect the necessary
         credentials.  The <literal>virConnectCredential</literal> structure looks like:
       </para>
-        <programlisting><![CDATA[
-struct _virConnectCredential {
+        <programlisting><![CDATA[struct _virConnectCredential {
     int type; /* One of virConnectCredentialType constants */
     const char *prompt; /* Prompt to show to user */
     const char *challenge; /* Additional challenge to show */
@@ -322,8 +305,7 @@ struct _virConnectCredential {
     char *result; /* Result to be filled with user response (or defresult) */
     unsigned int resultlen; /* Length of the result */
 };
-typedef struct _virConnectCredential virConnectCredential;
-        ]]></programlisting>
+typedef struct _virConnectCredential virConnectCredential;]]></programlisting>
       <para>
         In the case of example 4, authCb only handles VIR_CRED_AUTHNAME and
         VIR_CRED_PASSPHRASE, so for each of these credential types it prints
@@ -349,8 +331,7 @@ typedef struct _virConnectCredential virConnectCredential;
       </para>
       <example id="virtConnectClose-Example">
         <title>Using virConnectClose with additional references</title>
-        <programlisting><![CDATA[
-/* example ex5.c */
+        <programlisting><![CDATA[/* example ex5.c */
 /* compile with: gcc -g -Wall ex5.c -o ex5 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -381,8 +362,7 @@ int main(int argc, char *argv[])
      * collected - it should no longer be used */
 
     return 0;
-}
-        ]]></programlisting>
+}]]></programlisting>
       </example>
       <para>
         Also note that every other object associated with a connection
@@ -537,8 +517,7 @@ driver+unix:///session</screen>
       </para>
       <example id="Example-Connect_Local">
         <title>Connecting to a local QEMU hypervisor</title>
-        <programlisting><![CDATA[
- /* example ex6.c */
+        <programlisting><![CDATA[/* example ex6.c */
 /* compile with: gcc -g -Wall ex6.c -o ex6 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -555,8 +534,7 @@ int main(int argc, char *argv[])
     }
     virConnectClose(conn);
     return 0;
-}
-        ]]></programlisting>
+}]]></programlisting>
       </example>
     </section>
 
@@ -825,8 +803,7 @@ int main(int argc, char *argv[])
       </para>
       <example id="Example-Connect_Remote">
         <title>Connecting to a remote QEMU hypervisor</title>
-        <programlisting><![CDATA[
-/* example ex7.c */
+        <programlisting><![CDATA[/* example ex7.c */
 /* compile with: gcc -g -Wall ex7.c -o ex7 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -843,8 +820,7 @@ int main(int argc, char *argv[])
     }
     virConnectClose(conn);
     return 0;
-}
-        ]]></programlisting>
+}]]></programlisting>
       </example>
     </section>
   </section>
@@ -862,8 +838,7 @@ int main(int argc, char *argv[])
     </para>
       <example id="Example-ConnectGetCapabilities">
         <title>Using virConnectGetCapabilities</title>
-        <programlisting><![CDATA[
-/* example ex8.c */
+        <programlisting><![CDATA[/* example ex8.c */
 /* compile with: gcc -g -Wall ex8.c -o ex8 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -886,8 +861,7 @@ int main(int argc, char *argv[])
 
     virConnectClose(conn);
     return 0;
-}
-        ]]></programlisting>
+}]]></programlisting>
       </example>
     <para>
       The capabilities XML format provides information about the host
@@ -899,8 +873,7 @@ int main(int argc, char *argv[])
     </para>
     <example>
       <title>Example QEMU driver capabilities</title>
-      <programlisting>
-	<![CDATA[
+      <programlisting><![CDATA[
  <capabilities>
   <host>
     <cpu>
@@ -1169,7 +1142,6 @@ int main(int argc, char *argv[])
           </tbody>
         </tgroup>
       </table>
-<remark>DFJ marked up to this point from new content</remark>
     <para>
       <literal>/guest/arch</literal> is the root of an XML sub-document describing various virtual
       hardware aspects of this guest type.  It has a single attribute called
@@ -1239,8 +1211,7 @@ int main(int argc, char *argv[])
       </para>
       <example id="Example-ConnectGetHostname">
         <title>Using virConnectGetHostname</title>
-        <programlisting><![CDATA[
-/* example ex9.c */
+        <programlisting><![CDATA[/* example ex9.c */
 /* compile with: gcc -g -Wall ex9.c -o ex9 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -1263,8 +1234,7 @@ int main(int argc, char *argv[])
 
     virConnectClose(conn);
     return 0;
-}
-]]></programlisting>
+}]]></programlisting>
       </example>
     </section>
     <section>
@@ -1280,8 +1250,7 @@ int main(int argc, char *argv[])
       </para>
       <example id="Example-ConnectGetMaxVcpus">
         <title>Using virConnectGetMaxVcpus</title>
-        <programlisting><![CDATA[
-/* example ex10.c */
+        <programlisting><![CDATA[/* example ex10.c */
 /* compile with: gcc -g -Wall ex10.c -o ex10 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -1304,8 +1273,7 @@ int main(int argc, char *argv[])
 
     virConnectClose(conn);
     return 0;
-}
-]]></programlisting>
+}]]></programlisting>
       </example>
     </section>
     <section>
@@ -1319,8 +1287,7 @@ int main(int argc, char *argv[])
       </para>
       <example id="Example-NodeGetFreeMemory">
         <title>Using virNodeGetFreeMemory</title>
-        <programlisting><![CDATA[
-/* example ex11.c */
+        <programlisting><![CDATA[/* example ex11.c */
 /* compile with: gcc -g -Wall ex11.c -o ex11 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -1341,8 +1308,7 @@ int main(int argc, char *argv[])
 
     virConnectClose(conn);
     return 0;
-}
-]]></programlisting>
+}]]></programlisting>
       </example>
     </section>
     <section>
@@ -1455,8 +1421,7 @@ int main(int argc, char *argv[])
       </para>
       <example id="Example-NodeGetInfo">
         <title>Using virNodeGetInfo</title>
-        <programlisting><![CDATA[
-/* example ex12.c */
+        <programlisting><![CDATA[/* example ex12.c */
 /* compile with: gcc -g -Wall ex12.c -o ex12 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -1486,8 +1451,7 @@ int main(int argc, char *argv[])
 
     virConnectClose(conn);
     return 0;
-}
-]]></programlisting>
+}]]></programlisting>
       </example>
     </section>
     <section>
@@ -1505,8 +1469,7 @@ int main(int argc, char *argv[])
       </para>
       <example id="Example-NodeGetCellsFreeMemory">
         <title>Using virNodeGetCellsFreeMemory</title>
-        <programlisting><![CDATA[
-/* example ex13.c */
+        <programlisting><![CDATA[/* example ex13.c */
 /* compile with: gcc -g -Wall ex13.c -o ex13 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -1543,8 +1506,7 @@ int main(int argc, char *argv[])
 
     virConnectClose(conn);
     return 0;
-}
-]]></programlisting>
+}]]></programlisting>
       </example>
     </section>
     <section>
@@ -1559,8 +1521,7 @@ int main(int argc, char *argv[])
       </para>
       <example id="Example-ConnectGetType">
         <title>Using virConnectGetType</title>
-        <programlisting><![CDATA[
-/* example ex14.c */
+        <programlisting><![CDATA[/* example ex14.c */
 /* compile with: gcc -g -Wall ex14.c -o ex14 -lvirt */
 #include <stdio.h>
 #include <stdlib.h>
@@ -1580,8 +1541,195 @@ int main(int argc, char *argv[])
 
     virConnectClose(conn);
     return 0;
-}
-]]></programlisting>
+}]]></programlisting>
+      </example>
+    </section>
+    <section>
+      <title>virConnectGetVersion</title>
+      <para>
+        The <command>virConnectGetVersion</command> API call can be used to obtain the version of
+        the host virtualization software in use.  It takes a connection
+        pointer and unsigned long pointer as input, and if successful fills in
+        the unsigned long with the version.  On success it returns 0 and
+        if a failure occured returns -1. The following code demonstrates the
+        use of <command>virConnectGetVersion</command>:
+      </para>
+      <example id="Example-ConnectGetVersion">
+        <title>Using virConnectGetVersion</title>
+        <programlisting><![CDATA[/* example ex15.c */
+/* compile with: gcc -g -Wall ex15.c -o ex15 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    unsigned long ver;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    virConnectGetVersion(conn, &ver);
+
+    fprintf(stdout, "Version: %s\n", ver);
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
+      </example>
+    </section>
+    <section>
+      <title>virConnectGetLibVersion</title>
+      <para>
+        The <command>virConnectGetLibVersion</command> API call can be used to obtain the version of
+        the libvirt software in use on the host.  It takes a connection
+        pointer and unsigned long pointer as input, and if successful fills in
+        the unsigned long with the libvirt version.  On success it returns 0 and
+        if a failure occured returns -1. The following code demonstrates the
+        use of <command>virConnectGetLibVersion</command>:
+      </para>
+      <example id="Example-ConnectGetLibVersion">
+        <title>Using virConnectGetLibVersion</title>
+        <programlisting><![CDATA[/* example ex16.c */
+/* compile with: gcc -g -Wall ex16.c -o ex16 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    unsigned long ver;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    virConnectGetLibVersion(conn, &ver);
+
+    fprintf(stdout, "Libvirt Version: %s\n", ver);
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
+      </example>
+    </section>
+    <section>
+      <title>virConnectGetURI</title>
+      <para>
+        The <command>virConnectGetURI</command> API call can be used to obtain the URI for the
+        current connection.  While this is typically the same string that
+        was passed into the <command>virConnectOpen</command> call, the underlying driver can
+        sometimes canonicalize the string.  This API call will return the
+        canonical version.  It takes a connection pointer as input and if
+        successful, returns a URI string that must be freed by the caller. If
+        an error occurred, NULL will be returned instead. The following code demonstrates the use of <command>virConnectGetURI</command>:
+      </para>
+      <example id="Example-ConnectGetURI">
+        <title>Using virConnectGetURI</title>
+        <programlisting><![CDATA[/* example ex17.c */
+/* compile with: gcc -g -Wall ex17.c -o ex17 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    char *uri;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    uri = virConnectGetURI(conn);
+
+    fprintf(stdout, "Canonical URI: %s\n", uri);
+
+    free(uri);
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
+      </example>
+    </section>
+    <section>
+      <title>virConnectIsEncrypted</title>
+      <para>
+        The <command>virConnectIsEncrypted</command> API call can be used to find out if a given
+        connection is encrypted.  It takes a connection pointer as input, and
+        if successful returns 1 for an encrypted connection and 0 for an
+        unencrypted connection.  If an error occurred, -1 will be returned.
+        The following code demonstrates the use of <command>virConnectIsEncrypted</command>:
+      </para>
+      <example id="Example-ConnectIsEncrypted">
+        <title>Using virConnectIsEncrypted</title>
+        <programlisting><![CDATA[/* example ex18.c */
+/* compile with: gcc -g -Wall ex18.c -o ex18 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    fprintf(stdout, "Connection is encrypted: %d\n", virConnectIsEncrypted(conn));
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
+      </example>
+    </section>
+    <section>
+      <title>virConnectIsSecure</title>
+      <para>
+        The <command>virConnectIsSecure</command> API call can be used to find out if a given
+        connection is encrypted.  A connection will be classified secure if
+        it is either encrypted or it is running on a channel which is not
+        vulnerable to eavsdropping (like a UNIX domain socket). It takes a
+        connection pointer as input, and if successful returns 1 for a
+        secure connection and 0 for an insecure connection.  If an error
+        occurred, -1 will be returned. The following code demonstrates the use
+        of <command>virConnectIsSecure</command>:
+      </para>
+      <example id="Example-ConnectIsSecure">
+        <title>Using virConnectIsSecure</title>
+        <programlisting><![CDATA[/* example ex19.c */
+/* compile with: gcc -g -Wall ex19.c -o ex19 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    fprintf(stdout, "Connection is secure: %d\n", virConnectIsSecure(conn));
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
       </example>
     </section>
   </section>
@@ -1617,32 +1765,138 @@ int main(int argc, char *argv[])
 	a particular handle for.  The event types are specific to libvirt, and must
 	be translated by the application to and from poll() events.
       </para>
-      <para>
-	VIR_EVENT_HANDLE_READABLE - the handle has data to read
-	VIR_EVENT_HANDLE_WRITABLE - writing to the handle will not block
-	VIR_EVENT_HANDLE_ERROR - the handle has had some kind of error
-	VIR_EVENT_HANDLE_HANGUP - the handle has hung up.  This typically means the handle
-        has been closed.
-      </para>
+      <table id='event_types' frame='all'>
+        <title>Event Types</title>
+          <tgroup cols='2' align='left' colsep='1' rowsep='1'>
+	    <colspec colname='c1' />
+	    <colspec colname='c2' />
+	    <thead>
+	      <row>
+                <entry><para>Type</para></entry>
+                <entry><para>Description</para></entry>
+	      </row>
+	    </thead>
+	    <tbody>
+	      <row>
+                <entry>
+		  <para>VIR_EVENT_HANDLE_READABLE</para>
+                </entry>
+                <entry>
+		  <para>
+		    The handle has data to read
+		  </para>
+                </entry>
+	      </row>
+	      <row>
+                <entry>
+		  <para>VIR_EVENT_HANDLE_WRITABLE</para>
+                </entry>
+                <entry>
+		  <para>
+		    Writing to the handle will not block
+		  </para>
+                </entry>
+	      </row>
+	      <row>
+                <entry>
+		  <para>VIR_EVENT_HANDLE_ERROR</para>
+                </entry>
+                <entry>
+		  <para>
+		    The handle has had some kind of error
+		  </para>
+                </entry>
+	      </row>
+	      <row>
+                <entry>
+		  <para>VIR_EVENT_HANDLE_HANGUP</para>
+                </entry>
+                <entry>
+		  <para>
+		    The handle has hung up.  This typically means the handle has been closed.
+		  </para>
+                </entry>
+	      </row>
+            </tbody>
+          </tgroup>
+        </table>
     </section>
   </section>
 
   <section id="Application_Development_Guide-Connections-Security">
     <title>Security model</title>
     <para>
-      TBD
+      The libvirt security model is known as svirt, and is designed to protect
+      the host from guest domains, and guest domains from other guest
+      domains.  It works by putting each guest and guest disk into its own
+      security domain, using whatever facilities are available to do so on
+      the virtualization host.  For the most part, svirt is invisible to application
+      developers and need not be explored.  There is a single libvirt API
+      that provides information about the security model in use.
     </para>
+      <para>
+        The <command>virNodeGetSecurityModel</command> API call can be used to find out the
+        security model and DOI (Domain of Interpretation) in use on the
+        virtualization host.  It takes a connection pointer and a
+        virSecurityModel pointer as input, and if successful fills in the
+        virSecurityModel structure with the appropriate information.  On
+        success it returns 0; if an error occurred, -1 is returned.
+        The following code demonstrates the use of <command>virNodeGetSecurityModel</command>:
+      </para>
+      <example id="Example-NodeGetSecurityModel">
+        <title>Using virNodeGetSecurityModel</title>
+        <programlisting><![CDATA[/* example ex20.c */
+/* compile with: gcc -g -Wall ex20.c -o ex20 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    virSecurityModel secmodel;
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    virNodeGetSecurityModel(conn, &secmodel);
+
+    fprintf(stdout, "Security Model: %s\n", secmodel.model);
+    fprintf(stdout, "Security DOI:   %s\n", secmodel.doi);
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
+      </example>
   </section>
 
   <section id="Application_Development_Guide-Connections-Error_Handling">
     <title>Error handling</title>
     <para>
-      TBD
+      The libvirt error APIs are designed to give more detailed information
+      about what caused a failure in the case that a normal libvirt API
+      returned an error.  An important thing to note about libvirt error
+      reporting is that errors are stored per-connection.  This means that
+      if multiple errors happen on a connection without checking for the
+      error, intermediate errors may be lost.  For this reason, it is strongly
+      recommended to always check for and collect errors immediately after
+      the libvirt API failed.  Alternatively, libvirt provides a way to set
+      a custom error handling function that will be called synchronously at
+      the time the error occurred.
     </para>
   </section>
 
   <section id="Application_Development_Guide-Connections-Debug">
     <title>Debugging / logging</title>
+    <para>
+      TBD
+    </para>
+  </section>
+  <section id="Application_Development_Guide-Integrated-Example">
+    <title>Integrated example</title>
     <para>
       TBD
     </para>
