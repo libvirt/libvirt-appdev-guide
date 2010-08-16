@@ -767,8 +767,7 @@ int main(int argc, char *argv[])
 		<para>The name of the netcat command on the remote machine. The default
 		  is nc. For ssh transport, libvirt constructs an ssh command which looks like:
 		  <screen>
-		    command -p port [-l username] hostname netcat -U socket
-		  </screen>
+command -p port [-l username] hostname netcat -U socket</screen>
 		  Where port, username, hostname can be specified as part of the remote URI,
 		  and command, netcat and socket come from extra parameters (or sensible
 		  defaults). Example: <literal>netcat=/opt/netcat/bin/nc</literal>
