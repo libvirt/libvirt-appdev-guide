@@ -13,7 +13,7 @@
     <title>Overview</title>
     <para>
       The configuration of network interfaces on physical hosts can be
-      examined and modified with functions in the virInterface API. This is
+      examined and modified with functions in the <literal>virInterface</literal> API. This is
       useful for setting up the host to share one physical interface bewteen
       multiple guest domains you want connected directly to the network
       (briefly - enslave a physical interface to the bridge, then create a
@@ -23,17 +23,17 @@
       interfaces, and vlan interfaces.
     </para>
     <para>
-      The virInterface API is *not* used to configure virtual networks (used
+      The <literal>virInterface</literal> API is <emphasis>not</emphasis> used to configure virtual networks (used
       to conceal the guest domain's interface behind a NAT); virtual networks are
-      instead configured using the virNetwork API described in chapter 6.
+      instead configured using the <literal>virNetwork</literal> API described in <xref linkend="Application_Development_Guide-Virtual_Networks" />.
     </para>
     <para>
-      Each host interface is represented in the API by a virInterfacePtr - a
+      Each host interface is represented in the API by a <literal>virInterfacePtr</literal> - a
       pointer to an "interface object" - and each of these has a single
       unique identifier:
     </para>
     <para>
-      name: a string unique among all interfaces (active or inactive) on a
+      <literal>name</literal>: a string unique among all interfaces (active or inactive) on a
       host. This is the same string used by the operating system to identify
       the interface (eg: "eth0" or "br1").
     </para>
@@ -42,25 +42,25 @@
       duplicated in other interfaces on the same host:
     </para>
     <para>
-      mac: an ASCII string representation of the MAC address of this
+      <literal>mac</literal>: an ASCII string representation of the MAC address of this
       interface. Since multiple interfaces can share the same MAC address
-      (for example, in the case of VLANs), this is *not* a unique
+      (for example, in the case of VLANs), this is <emphasis>not</emphasis> a unique
       identifier. However, it can still be used to search for an interface.
     </para>
     <para>
       All interfaces configured with libvirt should be considered as
       persistent, since libvirt is actually changing the host's own
       persistent configuration data (usually contained in files somewhere
-      under /etc), and not the interface itself. However, there are API
+      under <filename>/etc</filename>), and not the interface itself. However, there are API
       functions to start and stop interfaces, and those actions cause the
       new configuration to be applied to the interface immediately.
     </para>
     <para>
-      When a new interface is defined (with virInterfaceDefineXML), or the
+      When a new interface is defined (with <literal>virInterfaceDefineXML</literal>), or the
       configuration of an existing interface is changed (again, with
-      virInterfaceDefineXML), this configuration will be stored on the host,
-      but the live configuration of the interface itself will not be changed
-      until either the interface is started (with virInterfaceCreate), or
+      <literal>virInterfaceDefineXML</literal>), this configuration will be stored on the host. 
+      The live configuration of the interface itself will not be changed
+      until either the interface is started (with <literal>virInterfaceCreate</literal>), or
       the host is rebooted.
     </para>
   </section>
@@ -68,11 +68,10 @@
   <section id="Application_Development_Guide-Network_Interfaces-XML_Format">
     <title>XML Interface Description Format</title>
     <para>
-      The current Relax NG definition of the XML that is produced/accepted
-      by virInterfaceDefineXML/virInterfaceGetXMLDesc can be found in the
-      file data/xml/interface.rng of the netcf package, available at
-      http://git.fedorahosted.org/git/netcf.git?p=netcf.git;a=tree. Below
-      are some examples of common interface configurations.
+      The current Relax NG definition of the XML that is produced and accepted
+      by <literal>virInterfaceDefineXML</literal> and <literal>virInterfaceGetXMLDesc</literal> can be found in the
+      file <filename>data/xml/interface.rng</filename> of the <package>netcf</package> package, available at
+      <ulink url="http://git.fedorahosted.org/git/netcf.git?p=netcf.git;a=tree">http://git.fedorahosted.org/git/netcf.git?p=netcf.git;a=tree</ulink>. Below are some examples of common interface configurations.
     </para>
     <example>
       <title>XML definition of an ethernet interface using DHCP</title>
@@ -88,7 +87,7 @@
     </example>
 
     <example>
-      <title>Example 7.2 XML definition of an ethernet interface with static IP</title>
+      <title>XML definition of an ethernet interface with static IP</title>
       <programlisting>
 <![CDATA[<interface type='ethernet' name='eth0'>
   <start mode='onboot'/>
@@ -102,7 +101,7 @@
     </example>
 
     <example>
-      <title>Example 7.3 XML definition of a bridge device with eth0 and eth1 attached</title>
+      <title>XML definition of a bridge device with eth0 and eth1 attached</title>
       <programlisting>
 <![CDATA[<interface type="bridge" name="br0">
   <start mode="onboot"/>
@@ -142,23 +141,23 @@
     <section id="Application_Development_Guide-Network_Interfaces-Information-Listing">
       <title>Enumerating Interfaces</title>
       <para>
-	Once you have a connection to a host (a virConnectPtr) you can learn
-	the number of interfaces on the host with virConnectNumOfInterfaces
-	and virConnectNumOfDefinedInterfaces, and a list of those interfaces'
-	names with virConnectListInterfaces and
-	virConnectListDefinedInterfaces ("defined" interfaces are those that
+	Once you have a connection to a host, represented by a <literal>virConnectPtr</literal>, you can determine
+	the number of interfaces on the host with <literal>virConnectNumOfInterfaces</literal>
+	and <literal>virConnectNumOfDefinedInterfaces</literal>. A list of those interfaces'
+	names can be obtained with <literal>virConnectListInterfaces</literal> and
+	<literal>virConnectListDefinedInterfaces</literal> ("defined" interfaces are those that
 	have been defined, but are currently inactive).  Each of these
 	functions takes a connection object as its first argument; the list
 	functions also take an argument pointing to a char* array for the
 	result, and another giving the maximum number of entries to put in
-	that array. All 4 functions return the number of interfaces found, or
+	that array. All four functions return the number of interfaces found, or
 	-1 if an error is encountered.
       </para>
 
       <example>
 	<title>Getting a list of active ("up") interfaces on a host</title>
 	<para>
-          NB, error handling omitted for clarity
+          Note: error handling omitted for clarity
 	</para>
 	<programlisting>
 <![CDATA[int numIfaces, i;
@@ -200,14 +199,14 @@ free(ifaceNames);]]>
     <section id="Application_Development_Guide-Network_Interfaces-Information-AltListing">
       <title>Alternative method of enumerating interfaces</title>
       <para>
-	It is also possible to get a list of interfaces from the virNodeDevice
-	API. Calling virNodeListDevices with the "cap" argument (capabilities)
-	set to "net". This will return a list of device names (each starting
+	It is also possible to get a list of interfaces from the <literal>virNodeDevice</literal>
+	function. Calling <literal>virNodeListDevices</literal> with the <parameter>cap</parameter> argument (capabilities)
+	set to <literal>net</literal>. This will return a list of device names (each starting
 	with "net_"), and those device names can, in turn, be sent through
-	virNodeDeviceLookupByName, then virNodeDeviceGetXMLDesc to get an XML
-	string containing the interfaces' names, mac addresses, and 802.11
-	vs. 802.03 status (wired vs wireless). See section 4.6 for more
-	information and examples of using virNodeDevice functions for this
+	<literal>virNodeDeviceLookupByName</literal>, then <literal>virNodeDeviceGetXMLDesc</literal> to get an XML
+	string containing the interfaces' names, MAC addresses, and 802.11
+	vs. 802.03 status (wired vs wireless). See <xref linkend="Application_Development_Guide-Guest_Domains-Device_Config" /> for more
+	information and examples of using <literal>virNodeDevice</literal> functions for this
 	purpose.
       </para>
     </section>
@@ -216,10 +215,10 @@ free(ifaceNames);]]>
       <title>Obtaining a virInterfacePtr for an Interface</title>
 
       <para>
-	Many operations require that you have a virInterfacePtr, but you may
+	Many operations require that you have a <literal>virInterfacePtr</literal>, but you may
 	only have the name or MAC address of the interface. You can use
-	virInterfaceLookupByName and virinterfaceLookupByMACString to get the
-	virInterfacePtr in these cases.
+	<literal>virInterfaceLookupByName</literal> and <literal>virInterfaceLookupByMACString</literal> to get the
+	<literal>virInterfacePtr</literal> in these cases.
       </para>
 
       <example>
@@ -262,22 +261,22 @@ if (iface) {
 
       <para>
 	Note that, as shown in the examples, after you are finished using the
-	virinterfacePtr, you must call virInterfaceFree to free up its
-	resources (even if you undefined or destroyed the interface in the
-	meantime). Another important detail: doing a lookup for a MAC address
+	<literal>virInterfacePtr</literal>, you must call <literal>virInterfaceFree</literal> to free up its
+	resources, even if you undefined or destroyed the interface in the
+	meantime. Also note that performing a lookup for a MAC address
 	that has multiple matches will result in a NULL return and a
 	VIR_ERR_MULTIPLE_INTERFACES error being raised. This limitation will
 	be addressed in the near future with a new API function.
       </para>
     </section>
     <section id="Application_Development_Guide-Network_Interfaces-Information-Detail">
-      <title>Retrieving Detailed Interface Info</title>
+      <title>Retrieving Detailed Interface Information</title>
 
       <para>
-	You may also find yourself with a virInterfacePtr, and need the name
+	You may also find yourself with a <literal>virInterfacePtr</literal>, and need the name
 	or MAC address of the interface, or want to examine the full interface
-	configuration. virInterfaceGetName, virInterfaceGetMACString, and
-	virInterfaceGetXMLDesc will take care of those needs.
+	configuration. The <literal>virInterfaceGetName</literal>, <literal>virInterfaceGetMACString</literal>, and
+	<literal>virInterfaceGetXMLDesc</literal> functions provide this capability.
       </para>
 
       <example>
@@ -294,17 +293,17 @@ printf("Interface %s has MAC address %s", name, mac);]]>
       </example>
 
       <para>
-	Note that the strings returned by virInterfaceGetName and
-	virInterfaceGetMACString do not need to be freed by the application;
+	Note that the strings returned by <literal>virInterfaceGetName</literal> and
+	<literal>virInterfaceGetMACString</literal> do not need to be freed by the application;
 	their lifetime will be the same as the interface object.
       </para>
       <para>
-	The string returned by virInterfaceGetXMLDesc, on the other hand, is
+	The string returned by <literal>virInterfaceGetXMLDesc</literal>, on the other hand, is
 	created especially for the caller, and the caller must free it when
-	finished. virInterfacegetXMLDesc also has a flags argument, intended
+	finished. <literal>virInterfacegetXMLDesc</literal> also has a flags argument, intended
 	for future expansion. For forward compatibility, you should always set
-	it to 0. The returned string is UTF-8 encoded; the same string may
-	later be given to virInterfaceDefineXML to recreate the interface
+	it to 0. The returned string is UTF-8 encoded. The same string may
+	later be given to <literal>virInterfaceDefineXML</literal> to recreate the interface
 	configuration.
       </para>
 
@@ -328,34 +327,34 @@ free(xml);]]>
       configuration, and "undefining" means deleting that configuration from
       the system. Newcomers may sometimes confuse these two operations with
       Create/Delete (which actually are used to activate and deactivate an
-      existing interface - see section 7.5).
+      existing interface - see <xref linkend="Application_Development_Guide-Network_Interfaces-Lifecycle" />).
     </para>
 
     <section id="Application_Development_Guide-Network_Interfaces-Configs-Define">
-      <title>Defining an inteface configuration</title>
+      <title>Defining an interface configuration</title>
       <para>
-	The virInterfaceDefineXML function is used both for adding new interface configurations
+	The <literal>virInterfaceDefineXML</literal> function is used for both adding new interface configurations
 	and modifying existing configurations. It either adds a new interface
-	(with all information, including the interface name, given in the xml
+	(with all information, including the interface name, given in the XML
 	data) or modifies the configuration of an existing interface. The
 	newly defined interface will be inactive until separate action is
 	taken to make the new configuration take effect (for example,
-	rebooting the host, or calling virInterfaceCreate, described in
-	section 7.5)
+	rebooting the host, or calling <literal>virInterfaceCreate</literal>, described in
+	<xref linkend="Application_Development_Guide-Network_Interfaces-Lifecycle" />)
       </para>
       <para>
 	If the interface is successfully added/modified in the host's
-	configuration, virInterfaceDefineXML returns a virInterfacePtr, which
+	configuration, <literal>virInterfaceDefineXML</literal> returns a <literal>virInterfacePtr</literal>. This
 	can be used as a handle to perform further actions on the new interface,
-	eg making it active with virInterfaceCreate.
+	for example making it active with <literal>virInterfaceCreate</literal>.
       </para>
       <para>
-	When you are finished using the returned virInterfacePtr, you must
-	free it with virInterfaceFree (this doesn't remove the interface
-	itself, just the internal object used by libvirt).
+	When you are finished using the returned <literal>virInterfacePtr</literal>, you must
+	free it with <literal>virInterfaceFree</literal>. This does not remove the interface
+	itself, just the internal object used by libvirt.
       </para>
 
-      <example>
+      <example id="Example-Defining_a_new_interface">
 	<title>Defining a new interface</title>
 	<programlisting>
 <![CDATA[/* xml is a char* containing the description, per section 7.2 */
@@ -372,7 +371,7 @@ if (virInterfaceCreate(iface) != 0) {
    /* other error handling */
    goto cleanup;
 }
-virinterfaceFree(iface);
+virInterfaceFree(iface);
 
 cleanup:
    /* ... */
@@ -382,18 +381,18 @@ cleanup:
     </section>
 
     <section id="Application_Development_Guide-Network_Interfaces-Configs-Undefine">
-      <title>Undefining an inteface configuration</title>
+      <title>Undefining an interface configuration</title>
       <para>
-	virInterfaceUndefine completely and permanently removes the
-	configuration for the given interface from tho host's configuration
-	files. If you might want to recreate this configuration again in the
-	future, you should call virInterfacegetXMLDesc and save the string
+	The <literal>virInterfaceUndefine</literal> function completely and permanently removes the
+	configuration for the given interface from the host's configuration
+	files. If you want to recreate this configuration again in the
+	future, you should call <literal>virInterfacegetXMLDesc</literal> and save the string
 	prior to the undefine.
       </para>
       <para>
-	virInterfaceUndefine does not free the virInterfacePtr itself, it only
+	<literal>virInterfaceUndefine</literal> does not free the <literal>virInterfacePtr</literal> itself, it only
 	removes the configuration from the host. You must still free the
-	virInterfacePtr with virInterfaceFree.
+	<literal>virInterfacePtr</literal> with <literal>virInterfaceFree</literal>.
       </para>
       <example>
 	<title>Undefining br0 interface after saving its XML data</title>
@@ -405,9 +404,9 @@ iface = virInterfaceLookupByName("br0");
 if (!iface) {
     printf ("Interface br0 not found.\n");
 } else {
-    xml = virinterfaceGetXMLDesc(iface, 0);
+    xml = virInterfaceGetXMLDesc(iface, 0);
     virInterfaceUndefine(iface);
-    virinterfaceFree(iface);
+    virInterfaceFree(iface);
 }
 /* you must also free the buffer at xml when you're finished with it */]]>
 --------------
@@ -421,28 +420,28 @@ if (!iface) {
     <para>
       In libvirt parlance, "creating" an interface means making it active,
       or "bringing it up", and "deleting" an interface means making it
-      inactive, or "bringing it down". On hosts using the netcf backend for
-      interface configuration (eg Fedora, RHEL), this is the same as calling
-      the system shell scripts "ifup" and "ifdown" for the interface.
+      inactive, or "bringing it down". On hosts using the <package>netcf</package> backend for
+      interface configuration, such as Fedora and Red Hat Enterprise Linux, this is the same as calling
+      the system shell scripts <command>ifup</command> and <command>ifdown</command> for the interface.
     </para>
 
     <section id="Application_Development_Guide-Network_Interfaces-Lifecycle-Activate">
       <title>Activating an interface</title>
 
       <para>
-	virInterfaceCreate makes the given inactive interface active
+	<literal>virInterfaceCreate</literal> makes the given inactive interface active
 	("up"). On success, it returns 0. If there is any problem making the
-	interface active, -1 is returned.
+	interface active, -1 is returned. <xref linkend="Example-Defining_a_new_interface" /> shows typical usage of this function.
       </para>
     </section>
 
     <section id="Application_Development_Guide-Network_Interfaces-Lifecycle-Deactivate">
-      <title>Activating an interface</title>
+      <title>Deactivating an interface</title>
 
       <para>
-	virInterfaceDestroy makes the given interface inactive ("down"). On
+	<literal>virInterfaceDestroy</literal> makes the given interface inactive ("down"). On
 	success, it returns 0. If there is any problem making the interface
-	acrive, -1 is returned.
+	active, -1 is returned.
       </para>
 
       <example>
@@ -472,20 +471,20 @@ if (!iface) {
     <title>Interface object memory management</title>
     <para>
       Any time an application calls a function that returns a
-      virInterfacePtr, it is implied that a reference counter has been
+      <literal>virInterfacePtr</literal>, it is implied that a reference counter has been
       incremented for that particular interface object. To decrement the
       reference counter (eventually resulting in the interface object's
-      resources being freed), call virInterfaceFree. This reference counting
+      resources being freed), call <literal>virInterfaceFree</literal>. This reference counting
       assures that the interface object will not be freed while an
       application is still using it.
     </para>
     <para>
-      For cases where an application makes a copy of a virinterfacePtr and
+      For cases where an application makes a copy of a <literal>virInterfacePtr</literal> and
       stores it away somewhere which may require a lifetime longer than that
-      of the original virinterfacePtr, virinterfaceRef should be called to
-      manually increment the reference count (and virinterfaceFree should
-      be called an extra time, when that copy of the virInterfacePtr is no
-      longer being used).
+      of the original <literal>virInterfacePtr</literal>, <literal>virInterfaceRef</literal> should be called to
+      manually increment the reference count. <literal>virInterfaceFree</literal> should then
+      be called an extra time, when that copy of the <literal>virInterfacePtr</literal> is no
+      longer being used.
     </para>
 
     <example>
