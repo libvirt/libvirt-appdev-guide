@@ -545,9 +545,7 @@ int main(int argc, char *argv[])
         Remote URIs have the general form ("[...]" meaning an optional part):
       </para>
 
-      <screen>
-	driver[+transport]://[username@][hostname][:port]/[path][?extraparameters]
-      </screen>
+      <screen>driver[+transport]://[username@][hostname][:port]/[path][?extraparameters]</screen>
 
       <para>
 	Each component of the URI is described below.
