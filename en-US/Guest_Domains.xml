@@ -78,30 +78,30 @@
     <example>
       <title>Fetching a domain object from an ID</title>
       <programlisting>
-        int domainID = 6;
-        virDomainPtr dom;
+int domainID = 6;
+virDomainPtr dom;
 
-        dom = virDomainLookupByID(conn, domainID);
+dom = virDomainLookupByID(conn, domainID);
       </programlisting>
     </example>
 
     <example>
       <title>Fetching a domain object from an name</title>
       <programlisting>
-        int domainName = "someguest";
-        virDomainPtr dom;
+int domainName = "someguest";
+virDomainPtr dom;
 
-        dom = virDomainLookupByName(conn, domainName);
+dom = virDomainLookupByName(conn, domainName);
       </programlisting>
     </example>
 
     <example>
       <title>Fetching a domain object from an UUID</title>
       <programlisting>
-        char *domainUUID = "00311636-7767-71d2-e94a-26e7b8bad250";
-        virDomainPtr dom;
+char *domainUUID = "00311636-7767-71d2-e94a-26e7b8bad250";
+virDomainPtr dom;
 
-        dom = virDomainLookupByUUIDString(conn, domainUUID);
+dom = virDomainLookupByUUIDString(conn, domainUUID);
       </programlisting>
     </example>
 
@@ -143,20 +143,20 @@
     <example>
       <title>Listing active domains</title>
       <programlisting>
-        int i;
-        int numDomains;
-        int *activeDomains;
+int i;
+int numDomains;
+int *activeDomains;
 
-        numDomains = virConnectNumOfDomains(conn);
+numDomains = virConnectNumOfDomains(conn);
 
-        activeDomains = malloc(sizeof(int) * numDomains);
-        numDomains = virConnectListDomains(conn, activeDomains, numDomains);
+activeDomains = malloc(sizeof(int) * numDomains);
+numDomains = virConnectListDomains(conn, activeDomains, numDomains);
 
-        printf("Active domain IDs:\n");
-        for (i = 0 ; i &lt; numDomains ; i++) {
-        printf("  %d\n", activeDomains[i]);
-        }
-        free(activeDomains);
+printf("Active domain IDs:\n");
+for (i = 0 ; i &lt; numDomains ; i++) {
+    printf("  %d\n", activeDomains[i]);
+}
+free(activeDomains);
       </programlisting>
       <!-- XXX we should include cross-ref to equivalent
            code snippet in appendix for python, perl, java -->
@@ -183,21 +183,21 @@
     <example>
       <title>Listing inactive domains</title>
       <programlisting>
-        int i;
-        int numDomains;
-        char **inactiveDomains;
+int i;
+int numDomains;
+char **inactiveDomains;
 
-        numDomains = virConnectNumOfDefinedDomains(conn);
+numDomains = virConnectNumOfDefinedDomains(conn);
 
-        inactiveDomains = malloc(sizeof(char *) * numDomains);
-        numDomains = virConnectListDomains(conn, inactiveDomains, numDomains);
+inactiveDomains = malloc(sizeof(char *) * numDomains);
+numDomains = virConnectListDomains(conn, inactiveDomains, numDomains);
 
-        printf("Inactive domain names:\n");
-        for (i = 0 ; i &lt; numDomains ; i++) {
-        printf("  %s\n", inactiveDomains[i]);
-        free(inactiveDomains[i]);
-        }
-        free(inactiveDomains);
+printf("Inactive domain names:\n");
+for (i = 0 ; i &lt; numDomains ; i++) {
+    printf("  %s\n", inactiveDomains[i]);
+    free(inactiveDomains[i]);
+}
+free(inactiveDomains);
       </programlisting>
       <!-- XXX we should include cross-ref to equivalent
            code snippet in appendix for python, perl, java -->
@@ -219,41 +219,39 @@
     <example>
       <title>Fetching all domain objects</title>
       <programlisting>
-        virDomainPtr *allDomains;
-        int numDomains;
-        int numActiveDomains, numInactiveDomains;
-        char *inactiveDomains;
-        int *activeDomains;
+virDomainPtr *allDomains;
+int numDomains;
+int numActiveDomains, numInactiveDomains;
+char *inactiveDomains;
+int *activeDomains;
 
-        numActiveDomains = virConnectNumOfDomains(conn);
-        numInactiveDomains = virConnectNumOfDefinedDomains(conn);
+numActiveDomains = virConnectNumOfDomains(conn);
+numInactiveDomains = virConnectNumOfDefinedDomains(conn);
 
-        allDomains = malloc(sizeof(virDomainPtr) *
-        numActiveDomains + numInactiveDomains);
-        inactiveDomains = malloc(sizeof(char *) * numDomains);
-        activeDomains = malloc(sizeof(int) * numDomains);
+allDomains = malloc(sizeof(virDomainPtr) *
+numActiveDomains + numInactiveDomains);
+inactiveDomains = malloc(sizeof(char *) * numDomains);
+activeDomains = malloc(sizeof(int) * numDomains);
 
-        numActiveDomains = virConnectListDomains(conn,
-        activeDomains,
-        numActiveDomains);
-        numInactiveDomains = virConnectListDomains(conn,
-        inactiveDomains,
-        numInactiveDomains);
+numActiveDomains = virConnectListDomains(conn,
+activeDomains,
+numActiveDomains);
+numInactiveDomains = virConnectListDomains(conn,
+inactiveDomains,
+numInactiveDomains);
 
-        for (i = 0 ; i &lt; numActiveDomains ; i++) {
-        allDomains[numDomains]
-        = virDomainLookupByID(activeDomains[i]);
-        numDomains++
-        }
+for (i = 0 ; i &lt; numActiveDomains ; i++) {
+    allDomains[numDomains] = virDomainLookupByID(activeDomains[i]);
+    numDomains++
+}
 
-        for (i = 0 ; i &lt; numInactiveDomains ; i++) {
-        allDomains[numDomains]
-        = virDomainLookupByName(inactiveDomains[i]);
-        free(inactiveDomains[i]);
-        numDomains++
-        }
-        free(activeDomains);
-        free(inactiveDomains);
+for (i = 0 ; i &lt; numInactiveDomains ; i++) {
+    allDomains[numDomains] = virDomainLookupByName(inactiveDomains[i]);
+    free(inactiveDomains[i]);
+    numDomains++
+}
+free(activeDomains);
+free(inactiveDomains);
       </programlisting>
     </example>
   </section>
