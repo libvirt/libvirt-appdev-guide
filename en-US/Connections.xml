@@ -134,7 +134,9 @@ int main(int argc, char *argv[])
         symbol <literal>virConnectAuthPtrDefault</literal> that implements callbacks suitable for
         a command line based application. Graphical applications will need to
         provide their own callback implementations. The flags parameter allows
-        the application to request a read-only connection if desired.
+        the application to request a read-only connection with the
+        <parameter>VIR_CONNECT_RO</parameter> flag if desired. A simple example C program that uses
+        <literal>virConnectOpenAuth</literal> with the default <literal>virConnectAuthPtrDefault</literal> is
       </para>
       <example id="virtConnectOpenAuth-Example1">
         <title>Using virConnectOpenAuth</title>
@@ -204,7 +206,6 @@ static int authCreds[] = {
 static int authCb(virConnectCredentialPtr cred, unsigned int ncred, void *cbdata)
 {
     int i;
-    char *bufptr;
     char buf[1024];
 
     for (i = 0; i < ncred; i++) {
@@ -1227,7 +1228,7 @@ int main(int argc, char *argv[])
 
     host = virConnectGetHostname(conn);
     fprintf(stdout, "Hostname:%s\n", host);
-    free(caps);
+    free(host);
 
     virConnectClose(conn);
     return 0;
@@ -1266,7 +1267,6 @@ int main(int argc, char *argv[])
 
     vcpus = virConnectGetMaxVcpus(conn, NULL);
     fprintf(stdout, "Maximum support virtual CPUs: %d\n", vcpus);
-    free(caps);
 
     virConnectClose(conn);
     return 0;
@@ -1293,7 +1293,7 @@ int main(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
     virConnectPtr conn;
-    int vcpus;
+    unsigned long long node_free_memory;
 
     conn = virConnectOpen("qemu:///system");
     if (conn == NULL) {
@@ -1301,7 +1301,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    fprintf(stdout, "Node free memory: %llu\n", virNodeGetFreeMemory(conn));
+    node_free_memory = virNodeGetFreeMemory(conn);
+    fprintf(stdout, "Node free memory: %llu\n", node_free_memory);
 
     virConnectClose(conn);
     return 0;
@@ -1440,7 +1441,7 @@ int main(int argc, char *argv[])
     fprintf(stdout, "Model: %s\n", nodeinfo.model);
     fprintf(stdout, "Memory size: %lukb\n", nodeinfo.memory);
     fprintf(stdout, "Number of CPUs: %u\n", nodeinfo.cpus);
-    fprintf(stdout, "MHz of CPUs: %u\n", mhz);
+    fprintf(stdout, "MHz of CPUs: %u\n", nodeinfo.mhz);
     fprintf(stdout, "Number of NUMA nodes: %u\n", nodeinfo.nodes);
     fprintf(stdout, "Number of CPU sockets: %u\n", nodeinfo.sockets);
     fprintf(stdout, "Number of CPU cores per socket: %u\n", nodeinfo.cores);
@@ -1478,6 +1479,7 @@ int main(int argc, char *argv[])
     virNodeInfo nodeinfo;
     unsigned long long *freemem;
     int i;
+    int numnodes;
 
     conn = virConnectOpen("qemu:///system");
     if (conn == NULL) {
@@ -1494,9 +1496,9 @@ int main(int argc, char *argv[])
     freemem = malloc(nodeinfo.nodes * sizeof(unsigned long long));
 
     /* fetch all the numa node free memory information from libvirt */
-    virNodeGetCellsFreeMemory(conn, freemem, 0, nodeinfo.nodes);
+    numnodes = virNodeGetCellsFreeMemory(conn, freemem, 0, nodeinfo.nodes);
 
-    for (i = 0; i < nodeinfo.nodes; i++)
+    for (i = 0; i < numnodes; i++)
     	fprintf(stdout, "Node %d: %llukb free memory\n", i, freemem[i]);
 
     free(freemem);
@@ -1572,7 +1574,7 @@ int main(int argc, char *argv[])
 
     virConnectGetVersion(conn, &ver);
 
-    fprintf(stdout, "Version: %s\n", ver);
+    fprintf(stdout, "Version: %lu\n", ver);
 
     virConnectClose(conn);
     return 0;
@@ -1610,7 +1612,7 @@ int main(int argc, char *argv[])
 
     virConnectGetLibVersion(conn, &ver);
 
-    fprintf(stdout, "Libvirt Version: %s\n", ver);
+    fprintf(stdout, "Libvirt Version: %lu\n", ver);
 
     virConnectClose(conn);
     return 0;
@@ -1734,90 +1736,22 @@ int main(int argc, char *argv[])
   <section id="Application_Development_Guide-Connections-Event_Loop">
     <title>Event loop integration</title>
     <para>
-      The purpose of the libvirt event loop APIs is so that libvirt can be easily
-      integrated into event driven applications, such as GUIs.  These methods
-      provide a way for the libvirt library to notify an application
-      that there are events that need servicing; the application can then service
-      these events during it's normal event loop.
+      The libvirt APIs use a basic request/response architecture that is
+      generally synchronous.  That is, a libvirt application calls a libvirt
+      API (the request) which doesn't return until the action is complete
+      (the response).  However, a libvirtd server can also generate
+      asynchronous messages and send them to the libvirt application; a
+      typical usage of these messages is to inform the libvirt client when a
+      domain has undergone a lifecycle change (like shutdown or restart).
     </para>
     <para>
-      In order to accomplish this, there are callbacks in both directions, from
-      the application to libvirt, and from libvirt to the application.  When
-      initially registering the event callback, the application should provide
-      various callbacks to libvirt; these functions will be called when libvirt
-      adds, deletes, or otherwise modifies a handle.  When libvirt calls these
-      functions, they should update internal application state regarding the handles
-      to be monitored.
+      The libvirt event loop APIs allow an application to register for these
+      asynchrounous events and properly handle them.
     </para>
     <para>
-      Eventually a libvirt handle will need servicing.  When this happens, the
-      application should call the callback previously provided by libvirt to service
-      the handle in question.
+      The <literal>virEventRegisterImpl</literal> API registers a set of callbacks that libvirt
+      will call when adding, updating, or removing a handle to watch.
     </para>
-
-    <section id="Application_Development_Guide-Connections-Event_Loop-Event_Types">
-      <title>Event Types</title>
-      <para>
-	The event types define what types of events an event loop should monitor
-	a particular handle for.  The event types are specific to libvirt, and must
-	be translated by the application to and from poll() events.
-      </para>
-      <table id='event_types' frame='all'>
-        <title>Event Types</title>
-          <tgroup cols='2' align='left' colsep='1' rowsep='1'>
-	    <colspec colname='c1' />
-	    <colspec colname='c2' />
-	    <thead>
-	      <row>
-                <entry><para>Type</para></entry>
-                <entry><para>Description</para></entry>
-	      </row>
-	    </thead>
-	    <tbody>
-	      <row>
-                <entry>
-		  <para>VIR_EVENT_HANDLE_READABLE</para>
-                </entry>
-                <entry>
-		  <para>
-		    The handle has data to read
-		  </para>
-                </entry>
-	      </row>
-	      <row>
-                <entry>
-		  <para>VIR_EVENT_HANDLE_WRITABLE</para>
-                </entry>
-                <entry>
-		  <para>
-		    Writing to the handle will not block
-		  </para>
-                </entry>
-	      </row>
-	      <row>
-                <entry>
-		  <para>VIR_EVENT_HANDLE_ERROR</para>
-                </entry>
-                <entry>
-		  <para>
-		    The handle has had some kind of error
-		  </para>
-                </entry>
-	      </row>
-	      <row>
-                <entry>
-		  <para>VIR_EVENT_HANDLE_HANGUP</para>
-                </entry>
-                <entry>
-		  <para>
-		    The handle has hung up.  This typically means the handle has been closed.
-		  </para>
-                </entry>
-	      </row>
-            </tbody>
-          </tgroup>
-        </table>
-    </section>
   </section>
 
   <section id="Application_Development_Guide-Connections-Security">
@@ -1876,26 +1810,1032 @@ int main(int argc, char *argv[])
       The libvirt error APIs are designed to give more detailed information
       about what caused a failure in the case that a normal libvirt API
       returned an error.  An important thing to note about libvirt error
-      reporting is that errors are stored per-connection.  This means that
-      if multiple errors happen on a connection without checking for the
-      error, intermediate errors may be lost.  For this reason, it is strongly
-      recommended to always check for and collect errors immediately after
-      the libvirt API failed.  Alternatively, libvirt provides a way to set
-      a custom error handling function that will be called synchronously at
-      the time the error occurred.
+      reporting is that errors are stored per-connection <emphasis>and</emphasis> globally.
+      This means that if multiple errors happen on a connection without
+      checking for the error, intermediate errors may be lost.  For this
+      reason, it is strongly recommended to always check for and collect
+      errors immediately after the libvirt API failed.  Alternatively,
+      libvirt provides a way to set a custom error handling function that
+      will be called synchronously at the time the error occurred.
     </para>
-  </section>
+    <para>
+      All of the error functions deal with getting or clearing a <literal>virError</literal>
+      structure. The <literal>virError</literal> structure looks like:
+    </para>
+    <programlisting><![CDATA[typedef struct _virError virError;
+typedef virError *virErrorPtr;
+struct _virError {
+    int		code;	/* The error code, a virErrorNumber */
+    int		domain;	/* What part of the library raised this error */
+    char       *message;/* human-readable informative error message */
+    virErrorLevel level;/* how consequent is the error */
+    virConnectPtr conn VIR_DEPRECATED; /* connection if available, deprecated
+                                          see note above */
+    virDomainPtr dom VIR_DEPRECATED; /* domain if available, deprecated
+                                        see note above */
+    char       *str1;	/* extra string information */
+    char       *str2;	/* extra string information */
+    char       *str3;	/* extra string information */
+    int		int1;	/* extra number information */
+    int		int2;	/* extra number information */
+    virNetworkPtr net VIR_DEPRECATED; /* network if available, deprecated
+                                         see note above */
+};]]></programlisting>
+    <para>
+      (Note that conn, dom, and net are deprecated members and should not be
+      used in new code, since they are not thread-safe)
+    </para>
+    <para>
+      The first member of the structure, "code", is the error code that was
+      returned from the error. This is one of the members of the
+      <literal>virErrorNumber</literal> enum in <filename>virterror.h</filename>; the full list of errors is:
+    </para>
+    <programlisting><![CDATA[typedef enum {
+    VIR_ERR_OK = 0,
+    VIR_ERR_INTERNAL_ERROR, /* internal error */
+    VIR_ERR_NO_MEMORY,  /* memory allocation failure */
+    VIR_ERR_NO_SUPPORT, /* no support for this function */
+    VIR_ERR_UNKNOWN_HOST,/* could not resolve hostname */
+    VIR_ERR_NO_CONNECT, /* can't connect to hypervisor */
+    VIR_ERR_INVALID_CONN,/* invalid connection object */
+    VIR_ERR_INVALID_DOMAIN,/* invalid domain object */
+    VIR_ERR_INVALID_ARG,/* invalid function argument */
+    VIR_ERR_OPERATION_FAILED,/* a command to hypervisor failed */
+    VIR_ERR_GET_FAILED,/* a HTTP GET command to failed */
+    VIR_ERR_POST_FAILED,/* a HTTP POST command to failed */
+    VIR_ERR_HTTP_ERROR,/* unexpected HTTP error code */
+    VIR_ERR_SEXPR_SERIAL,/* failure to serialize an S-Expr */
+    VIR_ERR_NO_XEN,/* could not open Xen hypervisor control */
+    VIR_ERR_XEN_CALL,/* failure doing an hypervisor call */
+    VIR_ERR_OS_TYPE, /* unknown OS type */
+    VIR_ERR_NO_KERNEL, /* missing kernel information */
+    VIR_ERR_NO_ROOT, /* missing root device information */
+    VIR_ERR_NO_SOURCE, /* missing source device information */
+    VIR_ERR_NO_TARGET, /* missing target device information */
+    VIR_ERR_NO_NAME, /* missing domain name information */
+    VIR_ERR_NO_OS, /* missing domain OS information */
+    VIR_ERR_NO_DEVICE, /* missing domain devices information */
+    VIR_ERR_NO_XENSTORE,/* could not open Xen Store control */
+    VIR_ERR_DRIVER_FULL, /* too many drivers registered */
+    VIR_ERR_CALL_FAILED, /* not supported by the drivers (DEPRECATED) */
+    VIR_ERR_XML_ERROR, /* an XML description is not well formed or broken */
+    VIR_ERR_DOM_EXIST,/* the domain already exist */
+    VIR_ERR_OPERATION_DENIED, /* operation forbidden on read-only connections */
+    VIR_ERR_OPEN_FAILED, /* failed to open a conf file */
+    VIR_ERR_READ_FAILED, /* failed to read a conf file */
+    VIR_ERR_PARSE_FAILED, /* failed to parse a conf file */
+    VIR_ERR_CONF_SYNTAX, /* failed to parse the syntax of a conf file */
+    VIR_ERR_WRITE_FAILED, /* failed to write a conf file */
+    VIR_ERR_XML_DETAIL, /* detail of an XML error */
+    VIR_ERR_INVALID_NETWORK, /* invalid network object */
+    VIR_ERR_NETWORK_EXIST, /* the network already exist */
+    VIR_ERR_SYSTEM_ERROR, /* general system call failure */
+    VIR_ERR_RPC, /* some sort of RPC error */
+    VIR_ERR_GNUTLS_ERROR, /* error from a GNUTLS call */
+    VIR_WAR_NO_NETWORK, /* failed to start network */
+    VIR_ERR_NO_DOMAIN, /* domain not found or unexpectedly disappeared */
+    VIR_ERR_NO_NETWORK, /* network not found */
+    VIR_ERR_INVALID_MAC, /* invalid MAC address */
+    VIR_ERR_AUTH_FAILED, /* authentication failed */
+    VIR_ERR_INVALID_STORAGE_POOL, /* invalid storage pool object */
+    VIR_ERR_INVALID_STORAGE_VOL, /* invalid storage vol object */
+    VIR_WAR_NO_STORAGE, /* failed to start storage */
+    VIR_ERR_NO_STORAGE_POOL, /* storage pool not found */
+    VIR_ERR_NO_STORAGE_VOL, /* storage pool not found */
+    VIR_WAR_NO_NODE, /* failed to start node driver */
+    VIR_ERR_INVALID_NODE_DEVICE,/* invalid node device object */
+    VIR_ERR_NO_NODE_DEVICE,/* node device not found */
+    VIR_ERR_NO_SECURITY_MODEL, /* security model not found */
+    VIR_ERR_OPERATION_INVALID, /* operation is not applicable at this time */
+    VIR_WAR_NO_INTERFACE, /* failed to start interface driver */
+    VIR_ERR_NO_INTERFACE, /* interface driver not running */
+    VIR_ERR_INVALID_INTERFACE, /* invalid interface object */
+    VIR_ERR_MULTIPLE_INTERFACES, /* more than one matching interface found */
+    VIR_WAR_NO_NWFILTER, /* failed to start nwfilter driver */
+    VIR_ERR_INVALID_NWFILTER, /* invalid nwfilter object */
+    VIR_ERR_NO_NWFILTER, /* nw filter pool not found */
+    VIR_ERR_BUILD_FIREWALL, /* nw filter pool not found */
+    VIR_WAR_NO_SECRET, /* failed to start secret storage */
+    VIR_ERR_INVALID_SECRET, /* invalid secret */
+    VIR_ERR_NO_SECRET, /* secret not found */
+    VIR_ERR_CONFIG_UNSUPPORTED, /* unsupported configuration construct */
+    VIR_ERR_OPERATION_TIMEOUT, /* timeout occurred during operation */
+    VIR_ERR_MIGRATE_PERSIST_FAILED, /* a migration worked, but making the
+                                       VM persist on the dest host failed */
+    VIR_ERR_HOOK_SCRIPT_FAILED, /* a synchronous hook script failed */
+    VIR_ERR_INVALID_DOMAIN_SNAPSHOT, /* invalid domain snapshot */
+    VIR_ERR_NO_DOMAIN_SNAPSHOT, /* domain snapshot not found */
+} virErrorNumber;]]></programlisting>
+    <para>
+      The second member of the structure, "domain", is named that for legacy
+      reasons, but really represents which part of libvirt generated the
+      error.  This is one of the members of the <literal>virErrorDomain</literal> enum in <filename>virterror.h</filename>;
+      the full list is:
+    </para>
+    <programlisting><![CDATA[typedef enum {
+    VIR_FROM_NONE = 0,
+    VIR_FROM_XEN,	/* Error at Xen hypervisor layer */
+    VIR_FROM_XEND,	/* Error at connection with xend daemon */
+    VIR_FROM_XENSTORE,	/* Error at connection with xen store */
+    VIR_FROM_SEXPR,	/* Error in the S-Expression code */
+    VIR_FROM_XML,	/* Error in the XML code */
+    VIR_FROM_DOM,	/* Error when operating on a domain */
+    VIR_FROM_RPC,	/* Error in the XML-RPC code */
+    VIR_FROM_PROXY,	/* Error in the proxy code */
+    VIR_FROM_CONF,	/* Error in the configuration file handling */
+    VIR_FROM_QEMU,      /* Error at the QEMU daemon */
+    VIR_FROM_NET,       /* Error when operating on a network */
+    VIR_FROM_TEST,	/* Error from test driver */
+    VIR_FROM_REMOTE,	/* Error from remote driver */
+    VIR_FROM_OPENVZ,    /* Error from OpenVZ driver */
+    VIR_FROM_XENXM,	/* Error at Xen XM layer */
+    VIR_FROM_STATS_LINUX,/* Error in the Linux Stats code */
+    VIR_FROM_LXC,       /* Error from Linux Container driver */
+    VIR_FROM_STORAGE,   /* Error from storage driver */
+    VIR_FROM_NETWORK,   /* Error from network config */
+    VIR_FROM_DOMAIN,    /* Error from domain config */
+    VIR_FROM_UML,       /* Error at the UML driver */
+    VIR_FROM_NODEDEV,   /* Error from node device monitor */
+    VIR_FROM_XEN_INOTIFY,/* Error from xen inotify layer */
+    VIR_FROM_SECURITY,  /* Error from security framework */
+    VIR_FROM_VBOX,      /* Error from VirtualBox driver */
+    VIR_FROM_INTERFACE, /* Error when operating on an interface */
+    VIR_FROM_ONE,       /* Error from OpenNebula driver */
+    VIR_FROM_ESX,       /* Error from ESX driver */
+    VIR_FROM_PHYP,      /* Error from IBM power hypervisor */
+    VIR_FROM_SECRET,    /* Error from secret storage */
+    VIR_FROM_CPU,       /* Error from CPU driver */
+    VIR_FROM_XENAPI,    /* Error from XenAPI */
+    VIR_FROM_NWFILTER,  /* Error from network filter driver */
+    VIR_FROM_HOOK,      /* Error from Synchronous hooks */
+    VIR_FROM_DOMAIN_SNAPSHOT, /* Error from domain snapshot */
+} virErrorDomain;]]></programlisting>
+    <para>
+      The third member of the structure, "message", is a human-readable string
+      describing the error.
+    </para>
+    <para>
+      The fourth member of the structure, "level", describes the severity of the
+      error. This is one of the members of the virErrorLevel enum in virterror.h;
+the full list of levels is:
+    </para>
+    <programlisting><![CDATA[typedef enum {
+    VIR_ERR_NONE = 0,
+    VIR_ERR_WARNING = 1,	/* A simple warning */
+    VIR_ERR_ERROR = 2		/* An error */
+} virErrorLevel;]]></programlisting>
+    <para>
+      The fifth member of the structure, "conn", is deprecated because it is not
+      thread-safe.
+    </para>
+    <para>
+      The sixth member of the structure, "dom", is deprecated because it is not
+      thread-safe.
+    </para>
+    <para>
+      The seventh member of the structure, "str1", gives extra human readable
+      information.
+    </para>
+    <para>
+      The eighth member of the structure, "str2", gives extra human readable
+      information.
+    </para>
+    <para>
+      The ninth member of the structure, "str3", gives extra human readable
+      information.
+    </para>
+    <para>
+      The tenth member of the structure, "int1", gives extra numeric information that
+      may be useful for further classifying the error.
+    </para>
+    <para>
+      The eleventh member of the structure, "int2", gives extra numeric
+      information that may be useful for further classifying the error.
+    </para>
+    <para>
+      The twelfth member of the structure, "net", is deprecated because it is not
+      thread-safe.
+    </para>
+    <para>
+      Example code that uses various parts of this structure will be
+      presented in API call sub-sections.
+    </para>
+    <section>
+      <title>virSetErrorFunc</title>
+      <para>
+        By default when an error occurs, libvirt will call the
+        <literal>virDefaultErrorFunc</literal> function which will print the error information to
+        stderr. The <literal>virSetErrorFunc</literal> API call can be used to set a custom global
+        error function that libvirt will call instead. It takes a void *
+        pointer for userData and a virErrorFunc function pointer as input, and
+        returns nothing. The custom error function should have a function signature of:
+      </para>
+      <programlisting>typedef void (*virErrorFunc) (void *userData, virErrorPtr error);</programlisting>
+      <para>
+        The following code demonstrates the use of <literal>virSetErrorFunc</literal>:
+      </para>
+<programlisting><![CDATA[/* example ex21.c */
+/* compile with: gcc -g -Wall ex21.c -o ex21 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
 
+static void customErrorFunc(void *userdata, virErrorPtr err)
+{
+  fprintf(stderr, "Failure of libvirt library call:\n");
+  fprintf(stderr, " Code: %d\n", err->code);
+  fprintf(stderr, " Domain: %d\n", err->domain);
+  fprintf(stderr, " Message: %s\n", err->message);
+  fprintf(stderr, " Level: %d\n", err->level);
+  fprintf(stderr, " str1: %s\n", err->str1);
+  fprintf(stderr, " str2: %s\n", err->str2);
+  fprintf(stderr, " str3: %s\n", err->str3);
+  fprintf(stderr, " int1: %d\n", err->int1);
+  fprintf(stderr, " int2: %d\n", err->int2);
+}
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+
+    virSetErrorFunc(NULL, customErrorFunc);
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    if (virConnectGetVersion(conn, NULL) < 0)
+        fprintf(stderr, "virConnectGetVersion failed\n");
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
+    </section>
+    <section>
+      <title>virConnSetErrorFunc</title>
+      <para>
+        The <literal>virConnSetErrorFunc</literal> API call can be used to set a per-connection
+        custom error handling function. If present, this per-connection error
+        handling function will take precendence over the global error handling
+        function. The internal libvirt logic for deciding which error
+        handling function to call is (in pseudo-code):
+      </para>
+<programlisting>if (conn->handler)
+    conn->handler;
+else if (global_handler)
+    global_handler;
+else
+    virDefaultErrorFunc;
+</programlisting>
+      <para>
+        <literal>virConnSetErrorFunc</literal> takes a virConnectPtr, a void * pointer for
+        userData, and a virErrorFunc function pointer as input, and
+        returns nothing.  As with <literal>virSetErrorFunc</literal>, the custom connection error
+        function should have a function signature of:
+      </para>
+
+<programlisting>typedef void (*virErrorFunc) (void *userData, virErrorPtr error);</programlisting>
+      <para>
+        The following code demonstrates the use of <literal>virConnSetErrorFunc</literal>:
+      </para>
+<programlisting><![CDATA[/* example ex22.c */
+/* compile with: gcc -g -Wall ex22.c -o ex22 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
+
+static void customConnErrorFunc(void *userdata, virErrorPtr err)
+{
+    fprintf(stderr, "Connection handler, failure of libvirt library call:\n");
+    fprintf(stderr, " Code: %d\n", err->code);
+    fprintf(stderr, " Domain: %d\n", err->domain);
+    fprintf(stderr, " Message: %s\n", err->message);
+    fprintf(stderr, " Level: %d\n", err->level);
+    fprintf(stderr, " str1: %s\n", err->str1);
+    fprintf(stderr, " str2: %s\n", err->str2);
+    fprintf(stderr, " str3: %s\n", err->str3);
+    fprintf(stderr, " int1: %d\n", err->int1);
+    fprintf(stderr, " int2: %d\n", err->int2);
+}
+
+static void customGlobalErrorFunc(void *userdata, virErrorPtr err)
+{
+    fprintf(stderr, "Global handler, failure of libvirt library call:\n");
+    fprintf(stderr, " Code: %d\n", err->code);
+    fprintf(stderr, " Domain: %d\n", err->domain);
+    fprintf(stderr, " Message: %s\n", err->message);
+    fprintf(stderr, " Level: %d\n", err->level);
+    fprintf(stderr, " str1: %s\n", err->str1);
+    fprintf(stderr, " str2: %s\n", err->str2);
+    fprintf(stderr, " str3: %s\n", err->str3);
+    fprintf(stderr, " int1: %d\n", err->int1);
+    fprintf(stderr, " int2: %d\n", err->int2);
+}
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn1;
+    virConnectPtr conn2;
+
+    /* set a global error function for all connections */
+    virSetErrorFunc(NULL, customGlobalErrorFunc);
+
+    conn1 = virConnectOpen("qemu:///system");
+    if (conn1 == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    conn2 = virConnectOpen("qemu:///system");
+    if (conn2 == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        virConnectClose(conn1);
+        return 2;
+    }
+
+    /* conn1 will use a different error function */
+    virConnSetErrorFunc(conn1, NULL, customConnErrorFunc);
+
+    /* this failure will use customConnErrorFunc */
+    if (virConnectGetVersion(conn1, NULL) < 0)
+        fprintf(stderr, "virConnectGetVersion failed\n");
+
+    /* this failure will use customGlobalErrorFunc */
+    if (virConnectGetVersion(conn2, NULL) < 0)
+        fprintf(stderr, "virConnectGetVersion failed\n");
+
+    virConnectClose(conn2);
+    virConnectClose(conn1);
+    return 0;
+}]]></programlisting>
+    </section>
+    <section>
+      <title>virCopyLastError</title>
+      <para>
+        The <literal>virCopyLastError</literal> API call can be used to obtain a copy of the last
+        error reported from libvirt. The error object is kept in thread local
+        storage so separate threads can safely use this function
+        concurrently. It takes a virErrorPtr as input, and if successful
+        makes a deep copy of the error. If there were no errors pending, 0 is
+        returned.  If there was an error pending, the error code is returned.
+        If an error occurred, -1 is returned. The following code demonstrates
+        the use of <literal>virCopyLastError</literal>:
+      </para>
+<programlisting><![CDATA[/* example ex23.c */
+/* compile with: gcc -g -Wall ex23.c -o ex23 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
+
+/* dummy error function to suppress virDefaultErrorFunc */
+static void customErrorFunc(void *userdata, virErrorPtr err)
+{
+}
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    virError err;
+
+    virSetErrorFunc(NULL, customErrorFunc);
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    if (virConnectGetVersion(conn, NULL) < 0) {
+        virCopyLastError(&err);
+        fprintf(stderr, "virConnectGetVersion failed: %s\n", err.message);
+        virResetError(&err);
+    }
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
+    </section>
+    <section>
+      <title>virGetLastError</title>
+      <para>
+        The <literal>virGetLastError</literal> API call can be used to obtain a pointer to the last
+        error reported from libvirt. The error object is kept in thread local
+        storage so separate threads can safely use this function
+        concurrently. Note that it does not take a copy, so error information
+        can be lost if the current thread obtains this pointer, calls another
+        libvirt function, and then tries to access this pointer. If that
+        behavior is desired, use <literal>virCopyLastError</literal> or <literal>virSaveLastError</literal>
+        instead. It takes no input, and returns a pointer to the last error
+        object if one exists. If there was no last error, or the last error
+        was VIR_ERR_OK, NULL is returned instead.  The following code demonstrates
+        the use of <literal>virGetLastError</literal>:
+      </para>
+<programlisting><![CDATA[/* example ex24.c */
+/* compile with: gcc -g -Wall ex24.c -o ex24 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
+
+static void customErrorFunc(void *userdata, virErrorPtr err)
+{
+}
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    virErrorPtr err;
+
+    virSetErrorFunc(NULL, customErrorFunc);
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    if (virConnectGetVersion(conn, NULL) < 0) {
+      /* this is a valid way to use virGetLastError */
+      err = virGetLastError();
+      fprintf(stderr, "virConnectGetVersion failed: %s\n", err->message);
+    }
+
+    if (virConnectGetVersion(conn, NULL) < 0) {
+      /* this is an invalid way to use virGetLastError; the error message will
+       * not represent the error from virConnectGetVersion
+       */
+      err = virGetLastError();
+      virNodeGetFreeMemory(NULL);
+      fprintf(stderr, "virConnectGetVersion failed: %s\n", err->message);
+    }
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
+    </section>
+    <section>
+      <title>virSaveLastError</title>
+      <para>
+        The <literal>virSaveLastError</literal> API call can be used to allocate and obtain a
+        copy of the last error reported from libvirt. The error object is
+        kept in thread local storage so separate threads can safely use this function
+        concurrently. It takes nothing as input and if successful returns a
+        newly allocated virError object. It is the responsibility of the
+        caller to free the error with <literal>virFreeError</literal>. If an error occurred, NULL is
+        returned instead. The following code demonstrates the use of <literal>virSaveLastError</literal>:
+      </para>
+<programlisting><![CDATA[/* example ex25.c */
+/* compile with: gcc -g -Wall ex25.c -o ex25 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
+
+/* dummy error function to suppress virDefaultErrorFunc */
+static void customErrorFunc(void *userdata, virErrorPtr err)
+{
+}
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    virErrorPtr err;
+
+    virSetErrorFunc(NULL, customErrorFunc);
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    if (virConnectGetVersion(conn, NULL) < 0) {
+        err = virSaveLastError();
+        fprintf(stderr, "virConnectGetVersion failed: %s\n", err->message);
+        virFreeError(err);
+    }
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
+    </section>
+    <section>
+      <title>virResetError</title>
+      <para>
+        The <literal>virResetError</literal> API call can be used to clear and free any memory
+        associated with an virError object (though it does not free the object
+        itself). It is typically used after a program is finished using an
+        virError object obtained through <literal>virCopyLastError</literal>, though it can also
+        be used after a <literal>virSaveLastError</literal> in special circumstances. It takes
+        the virErrorPtr as input, and returns nothing. The following code
+        demonstrates the use of <literal>virResetError</literal>:
+      </para>
+<programlisting><![CDATA[/* example ex26.c */
+/* compile with: gcc -g -Wall ex26.c -o ex26 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
+
+/* dummy error function to suppress virDefaultErrorFunc */
+static void customErrorFunc(void *userdata, virErrorPtr err)
+{
+}
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    virError err;
+
+    virSetErrorFunc(NULL, customErrorFunc);
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    if (virConnectGetVersion(conn, NULL) < 0) {
+        virCopyLastError(&err);
+        fprintf(stderr, "virConnectGetVersion failed: %s\n", err.message);
+        virResetError(&err);
+    }
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
+    </section>
+    <section>
+      <title>virFreeError</title>
+      <para>
+        The <literal>virFreeError</literal> API call can be used to clear and free any memory
+        associated with an virError object, including the object itself. It
+        is typically used after a program is finished using an virError object
+        obtained through <literal>virSaveLastError</literal>, though it can also be used after a
+        <literal>virCopyLastError</literal> in special circumstances. It takes the virErrorPtr
+        as input, and returns nothing. The following code demonstrates the
+        use of <literal>virFreeError</literal>:
+      </para>
+<programlisting><![CDATA[/* example ex27.c */
+/* compile with: gcc -g -Wall ex27.c -o ex27 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
+
+/* dummy error function to suppress virDefaultErrorFunc */
+static void customErrorFunc(void *userdata, virErrorPtr err)
+{
+}
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    virErrorPtr err;
+
+    virSetErrorFunc(NULL, customErrorFunc);
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    if (virConnectGetVersion(conn, NULL) < 0) {
+        err = virSaveLastError();
+        fprintf(stderr, "virConnectGetVersion failed: %s\n", err->message);
+        virFreeError(err);
+    }
+
+    virConnectClose(conn);
+    return 0;
+}]]></programlisting>
+    </section>
+    <section>
+      <title>virConnResetError</title>
+      <para>
+        The <literal>virConnResetError</literal> API call can be used to clear and free any memory
+        associated with an virError object on a particular connection (though
+        it does not free the object itself). It is typically used after a
+        program is finished using an virError object obtained through
+        <literal>virConnCopyLastError</literal>, though it can also be used after a <literal>virConnSaveLastError</literal>
+        in special circumstances. However, both <literal>virConnCopyLastError</literal> and
+        <literal>virConnSaveLastError</literal> are deprecated, and since libvirt 0.6.0 all
+        per-connection errors are also propagated to the global error
+        storage. Therefore, this API should not be used in new code;
+        <literal>virResetError</literal> should be used instead. The function remains for
+        backwards compatibility.
+      </para>
+    </section>
+    <section>
+      <title>virConnCopyLastError</title>
+      <para>
+        The <literal>virConnCopyLastError</literal> API call can be used to obtain a copy of the last
+        error reported from libvirt on a particular connection. This function
+        has been deprecated because it is not thread-safe, and since libvirt
+        0.6.0 all connection errors are also propagated to the global error
+        object. New code should use <literal>virCopyLastError</literal> instead. This
+        function remains for backwards compatilibity.
+      </para>
+    </section>
+    <section>
+      <title>virConnGetLastError</title>
+      <para>
+        The <literal>virConnGetLastError</literal> API call can be used to obtain a pointer to the last
+        error reported from libvirt on a particular connection. This function
+        has been deprecated because it is not thread-safe, and since libvirt
+        0.6.0 all connection errors are also propagated to the global error
+        object. New code should use <literal>virGetLastError</literal> instead. This
+        function remains for backwards compatilibity.
+      </para>
+    </section>
+  </section>
   <section id="Application_Development_Guide-Connections-Debug">
     <title>Debugging / logging</title>
     <para>
-      TBD
+      Libvirt includes logging facilities to facilitate the tracing of library
+      execution. These logs will frequently be requested when trying to
+      obtain support for libvirt, so familiarity with them is essential.
     </para>
+    <para>
+      The logging facilities in libvirt are based on 3 key concepts:
+    </para>
+    <orderedlist>
+      <listitem>
+        <para>
+          Log messages - generated at runtime by the libvirt code, they include
+          a timestamp, a priority level (DEBUG = 1, INFO = 2, WARNING = 3, ERROR = 4),
+          a category, function name and line number indicating where the
+          message originated from, and a formatted message.
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          Log filters - patterns and priorities which control whether or
+          not a particular message is displayed. The format for a filter is:
+        </para>
+        <para><screen>x:name</screen></para>
+        <para>
+          where "x" is the minimal priority level where the match should apply, and
+          "name" is a string to match against. The priority levels are:
+        </para>
+        <itemizedlist>
+            <listitem><para>1 (or debug) - log all messages</para></listitem>
+            <listitem><para>2 (or info) - log all non-debugging information</para></listitem>
+            <listitem><para>3 (or warn) - log only warnings and errors - this is the default</para></listitem>
+            <listitem><para>4 (or error) - log only errors</para></listitem>
+        </itemizedlist>
+        <para>
+          For instance, to log all debug messages to the qemu driver, the
+          following filter can be used:
+        </para>
+        <para><screen>1:qemu</screen></para>
+        <para>
+          Multiple filters can be specified together by space separating them;
+          the following example logs all debug messages from qemu, and logs
+          all error messages from the remote driver:
+        </para>
+        <para><screen>1:qemu 4:remote</screen></para>
+      </listitem>
+      <listitem>
+        <para>
+          Log outputs - where to send the message once it has passed
+          through filters. The format for a log output is one of the forms:
+        </para>
+        <para>
+<screen>x:stderr - log to stderr
+x:syslog:name - log to syslog with a prefix of "name"
+x:file:file_path - log to a file specified by "file_path"</screen>
+        </para>
+        <para>
+          where "x" is the minimal priority level. For instance, to log all
+          warnings and errors to syslog with a prefix of "libvirtd", the
+          following output can be used:
+        </para>
+        <para><screen>3:syslog:libvirtd</screen></para>
+        <para>
+          Multiple outputs can be specified by space separating them; the
+          following example logs all error and warning messages to syslog, and
+          logs all debug, information, warning, and error messages to
+          <filename>/tmp/libvirt.log</filename>:
+        </para>
+        <para><screen>3:syslog:libvirtd 1:file:/tmp/libvirt.log</screen></para>
+      </listitem>
+    </orderedlist>
+    <section>
+      <title>Environment Variables</title>
+      <para>
+        The desired log priority level, filters, and outputs are specified to
+        the libvirt library through the use of environment variables:
+      </para>
+      <orderedlist>
+        <listitem>
+          <para>
+            <literal>LIBVIRT_DEBUG</literal> specifies the minimum priority level messages that
+            will be logged. This can be thought of as a "global" priority level;
+            if a particular log message does not match a specific filter in
+            <literal>LIBVIRT_LOG_FILTERS</literal>, it will be compared to this global priority and
+            logged as appropriate.
+          </para>
+        </listitem>
+        <listitem>
+          <para>
+            <literal>LIBVIRT_LOG_FILTERS</literal> specifies the filters to apply.
+          </para>
+        </listitem>
+        <listitem>
+          <para>
+            <literal>LIBVIRT_LOG_OUTPUTS</literal> specifies the outputs to send the message to.
+          </para>
+        </listitem>
+      </orderedlist>
+      <example>
+        <title>Running virsh with environment variables</title>
+        <para>
+          To see more detailed information about what is going on with virsh,
+          we may run it like the following:
+        </para>
+
+<screen><command>LIBVIRT_DEBUG=error LIBVIRT_LOG_FILTERS="1:remote" virsh list</command></screen>
+
+        <para>
+          This example will only print error messages from virsh, <emphasis>except</emphasis> that
+          the remote driver will print all debug, information, warning, and
+          error messages.
+        </para>
+      </example>
+    </section>
   </section>
   <section id="Application_Development_Guide-Integrated-Example">
     <title>Integrated example</title>
     <para>
-      TBD
+      This example demonstrates many of the concepts from the chapter
+      together, including error checking.  While still not a "real" program
+      (which would likely be multi-threaded), it's a good example of how to
+      write a libvirt program from end to end.
     </para>
+<programlisting><![CDATA[/* example ex28.c */
+/* compile with: gcc -g -Wall ex28.c -o ex28 -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
+
+static void customConnErrorFunc(void *userdata, virErrorPtr err)
+{
+    fprintf(stderr, "Connection handler, failure of libvirt library call:\n");
+    fprintf(stderr, " Code: %d\n", err->code);
+    fprintf(stderr, " Domain: %d\n", err->domain);
+    fprintf(stderr, " Message: %s\n", err->message);
+    fprintf(stderr, " Level: %d\n", err->level);
+    fprintf(stderr, " str1: %s\n", err->str1);
+    fprintf(stderr, " str2: %s\n", err->str2);
+    fprintf(stderr, " str3: %s\n", err->str3);
+    fprintf(stderr, " int1: %d\n", err->int1);
+    fprintf(stderr, " int2: %d\n", err->int2);
+}
+
+static void customGlobalErrorFunc(void *userdata, virErrorPtr err)
+{
+    fprintf(stderr, "Global handler, failure of libvirt library call:\n");
+    fprintf(stderr, " Code: %d\n", err->code);
+    fprintf(stderr, " Domain: %d\n", err->domain);
+    fprintf(stderr, " Message: %s\n", err->message);
+    fprintf(stderr, " Level: %d\n", err->level);
+    fprintf(stderr, " str1: %s\n", err->str1);
+    fprintf(stderr, " str2: %s\n", err->str2);
+    fprintf(stderr, " str3: %s\n", err->str3);
+    fprintf(stderr, " int1: %d\n", err->int1);
+    fprintf(stderr, " int2: %d\n", err->int2);
+}
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn1;
+    virConnectPtr conn2;
+    virConnectPtr conn3;
+    virConnectPtr conn4;
+    char *caps;
+    virError err;
+    char *hostname;
+    virErrorPtr err2;
+    int vcpus;
+    unsigned long long node_free_memory;
+    virNodeInfo nodeinfo;
+    unsigned long long *node_cells_freemem;
+    int numnodes;
+    int i;
+    const char *type;
+    unsigned long virtVersion;
+    unsigned long libvirtVersion;
+    char *uri;
+    int is_encrypted;
+    int is_secure;
+    virSecurityModel secmodel;
+
+    /* set a global error function for all connections */
+    virSetErrorFunc(NULL, customGlobalErrorFunc);
+
+    /* open a connection using the old-style virConnectOpen */
+    conn1 = virConnectOpen("qemu:///system");
+    if (conn1 == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        return 1;
+    }
+
+    /* open a read-only connection using the old-style virConnectOpenReadOnly */
+    conn2 = virConnectOpenReadOnly("qemu:///system");
+    if (conn2 == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        virConnectClose(conn1);
+        return 2;
+    }
+
+    /* open a connection using the new-style virConnectOpenAuth */
+    conn3 = virConnectOpenAuth("qemu:///system", virConnectAuthPtrDefault, 0);
+    if (conn3 == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        virConnectClose(conn2);
+        virConnectClose(conn1);
+        return 3;
+    }
+
+    /* open a read-only connection using the new-style virConnectOpenAuth */
+    conn4 = virConnectOpenAuth("qemu:///system", virConnectAuthPtrDefault,
+                               VIR_CONNECT_RO);
+    if (conn4 == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        virConnectClose(conn3);
+        virConnectClose(conn2);
+        virConnectClose(conn1);
+        return 3;
+    }
+
+    /* conn1 will use a different error function */
+    virConnSetErrorFunc(conn1, NULL, customConnErrorFunc);
+
+    /* test out error handling */
+    /* this failure will use customConnErrorFunc */
+    if (virConnectGetVersion(conn1, NULL) < 0)
+        fprintf(stderr, "virConnectGetVersion failed\n");
+    /* this failure will use customGlobalErrorFunc */
+    if (virConnectGetVersion(conn2, NULL) < 0)
+        fprintf(stderr, "virConnectGetVersion failed\n");
+
+    /* clear out the per-connection error function; we will report errors with
+     * the vir*Error() functions below*/
+    virConnSetErrorFunc(conn1, NULL, NULL);
+
+    /* clear out the global error function; we will report errors with
+     * the vir*Error() functions below*/
+    virSetErrorFunc(NULL, NULL);
+
+    /* get the capabilities of conn1 */
+    caps = virConnectGetCapabilities(conn1);
+    if (caps == NULL) {
+        virCopyLastError(&err);
+        fprintf(stderr, "virConnectGetCapabilities failed: %s\n", err.message);
+        virResetError(&err);
+    }
+    fprintf(stdout, "Capabilities of connection 1:\n%s\n", caps);
+    free(caps);
+
+    /* get the hostname reported from conn2 */
+    hostname = virConnectGetHostname(conn2);
+    if (hostname == NULL) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virConnectGetVersion failed: %s\n", err2->message);
+        virFreeError(err2);
+    }
+    fprintf(stdout, "Connection 2 hostname: %s\n", hostname);
+    free(hostname);
+
+    /* get the maximum number of vcpus supported by conn3 */
+    vcpus = virConnectGetMaxVcpus(conn3, NULL);
+    if (vcpus < 0) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virConnectGetMaxVcpus failed: %s\n", err2->message);
+        virFreeError(err2);
+    }
+    fprintf(stdout, "Maximum number of cpus supported on connection 3: %d\n",
+            vcpus);
+
+    /* get the amount of free memory available on the node from conn4 */
+    node_free_memory = virNodeGetFreeMemory(conn4);
+    if (node_free_memory == 0) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virNodeGetFreeMemory failed: %s\n", err2->message);
+        virFreeError(err2);
+    }
+
+    /* get the node information from conn1 */
+    if (virNodeGetInfo(conn1, &nodeinfo) < 0) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virNodeGetInfo failed: %s\n", err2->message);
+        virFreeError(err2);
+    }
+    fprintf(stdout, "Node information from connection 1:\n");
+    fprintf(stdout, " Model: %s\n", nodeinfo.model);
+    fprintf(stdout, " Memory size: %lukb\n", nodeinfo.memory);
+    fprintf(stdout, " Number of CPUs: %u\n", nodeinfo.cpus);
+    fprintf(stdout, " MHz of CPUs: %u\n", nodeinfo.mhz);
+    fprintf(stdout, " Number of NUMA nodes: %u\n", nodeinfo.nodes);
+    fprintf(stdout, " Number of CPU sockets: %u\n", nodeinfo.sockets);
+    fprintf(stdout, " Number of CPU cores per socket: %u\n", nodeinfo.cores);
+    fprintf(stdout, " Number of CPU threads per core: %u\n", nodeinfo.threads);
+
+    /* get the amount of memory in each of the NUMA nodes from connection 1 */
+    /* we already know the number of nodes from virNodeGetInfo above */
+    node_cells_freemem = malloc(nodeinfo.nodes * sizeof(unsigned long long));
+    numnodes = virNodeGetCellsFreeMemory(conn1, node_cells_freemem, 0,
+                                         nodeinfo.nodes);
+    if (numnodes < 0) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virNodeGetCellsFreeMemory failed: %s\n",
+                err2->message);
+        virFreeError(err2);
+    }
+    fprintf(stdout, "Node Cells Free Memory from connection 1:\n");
+    for (i = 0; i < numnodes; i++)
+    	fprintf(stdout, " Cell %d: %llukb free memory\n", i,
+                node_cells_freemem[i]);
+    free(node_cells_freemem);
+
+    /* get the virtualization type from conn2 */
+    type = virConnectGetType(conn2);
+    if (type == NULL) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virConnectGetType failed: %s\n", err2->message);
+        virFreeError(err2);
+    }
+    fprintf(stdout, "Virtualization type from connection 2: %s\n", type);
+
+    /* get the virtualization version from conn3 */
+    if (virConnectGetVersion(conn3, &virtVersion) < 0) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virConnectGetVersion failed: %s\n", err2->message);
+        virFreeError(err2);
+    }
+    fprintf(stdout, "Virtualization version from connection 3: %lu\n",
+            virtVersion);
+
+    /* get the libvirt version from conn4 */
+    if (virConnectGetLibVersion(conn4, &libvirtVersion) < 0) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virConnectGetLibVersion failed: %s\n", err2->message);
+        virFreeError(err2);
+    }
+    fprintf(stdout, "Libvirt version from connection 4: %lu\n", libvirtVersion);
+
+    /* get the URI from conn1 */
+    uri = virConnectGetURI(conn1);
+    if (uri == NULL) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virConnectGetURI failed: %s\n", err2->message);
+        virFreeError(err2);
+    }
+    fprintf(stdout, "Canonical URI from connection 1: %s\n", uri);
+    free(uri);
+
+    /* is the connection encrypted? from conn2 */
+    is_encrypted = virConnectIsEncrypted(conn2);
+    if (is_encrypted < 0) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virConnectIsEncrypted failed: %s\n", err2->message);
+        virFreeError(err2);
+    }
+    fprintf(stdout, "Connection 2 %s encrypted\n",
+            (is_encrypted == 0) ? "is not" : "is");
+
+    /* is the connection secure? from conn3 */
+    is_secure = virConnectIsSecure(conn3);
+    if (is_secure < 0) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virConnectIsSecure failed: %s\n", err2->message);
+        virFreeError(err2);
+    }
+    fprintf(stdout, "Connection 3 %s secure\n",
+            (is_secure == 0) ? "is not" : "is");
+
+    /* get the security model from conn4 */
+    if (virNodeGetSecurityModel(conn4, &secmodel) < 0) {
+        err2 = virSaveLastError();
+        fprintf(stderr, "virNodeGetSecurityModel failed: %s\n", err2->message);
+        virFreeError(err2);
+    }
+    fprintf(stdout, "Connection 4 Security Model = %s, DOI = %s\n",
+            secmodel.model, secmodel.doi);
+
+    virConnectClose(conn4);
+    virConnectClose(conn3);
+    virConnectClose(conn2);
+    virConnectClose(conn1);
+    return 0;
+}]]></programlisting>
   </section>
 </chapter>

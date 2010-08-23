@@ -7,6 +7,20 @@
   <simpara>
     <revhistory>
       <revision>
+        <revnumber>4</revnumber>
+        <date>Mon Aug 23 2010</date>
+        <author>
+          <firstname>David</firstname>
+          <surname>Jorm</surname>
+          <email>djorm@redhat.com</email>
+        </author>
+        <revdescription>
+          <simplelist>
+            <member>Updated content for the connections chapter</member>
+          </simplelist>
+        </revdescription>
+      </revision>
+      <revision>
         <revnumber>3</revnumber>
         <date>Mon Aug 16 2010</date>
         <author>
