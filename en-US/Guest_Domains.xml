@@ -190,7 +190,7 @@ char **inactiveDomains;
 numDomains = virConnectNumOfDefinedDomains(conn);
 
 inactiveDomains = malloc(sizeof(char *) * numDomains);
-numDomains = virConnectListDomains(conn, inactiveDomains, numDomains);
+numDomains = virConnectListDefinedDomains(conn, inactiveDomains, numDomains);
 
 printf("Inactive domain names:\n");
 for (i = 0 ; i &lt; numDomains ; i++) {
