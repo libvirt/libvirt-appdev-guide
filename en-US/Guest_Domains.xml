@@ -236,7 +236,7 @@ activeDomains = malloc(sizeof(int) * numDomains);
 numActiveDomains = virConnectListDomains(conn,
 activeDomains,
 numActiveDomains);
-numInactiveDomains = virConnectListDomains(conn,
+numInactiveDomains = virConnectListDefinedDomains(conn,
 inactiveDomains,
 numInactiveDomains);
 
