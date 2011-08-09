@@ -220,35 +220,36 @@ free(inactiveDomains);
       <title>Fetching all domain objects</title>
       <programlisting>
 virDomainPtr *allDomains;
-int numDomains;
+int numDomains = 0;
 int numActiveDomains, numInactiveDomains;
-char *inactiveDomains;
+char **inactiveDomains;
 int *activeDomains;
+int i;
 
 numActiveDomains = virConnectNumOfDomains(conn);
 numInactiveDomains = virConnectNumOfDefinedDomains(conn);
 
 allDomains = malloc(sizeof(virDomainPtr) *
-numActiveDomains + numInactiveDomains);
-inactiveDomains = malloc(sizeof(char *) * numDomains);
-activeDomains = malloc(sizeof(int) * numDomains);
+    (numActiveDomains + numInactiveDomains));
+inactiveDomains = malloc(sizeof(char *) * numInactiveDomains);
+activeDomains = malloc(sizeof(int) * numActiveDomains);
 
 numActiveDomains = virConnectListDomains(conn,
-activeDomains,
-numActiveDomains);
+    activeDomains,
+    numActiveDomains);
 numInactiveDomains = virConnectListDefinedDomains(conn,
-inactiveDomains,
-numInactiveDomains);
+    inactiveDomains,
+    numInactiveDomains);
 
 for (i = 0 ; i &lt; numActiveDomains ; i++) {
-    allDomains[numDomains] = virDomainLookupByID(activeDomains[i]);
-    numDomains++
+    allDomains[numDomains] = virDomainLookupByID(conn, activeDomains[i]);
+    numDomains++;
 }
 
 for (i = 0 ; i &lt; numInactiveDomains ; i++) {
-    allDomains[numDomains] = virDomainLookupByName(inactiveDomains[i]);
+    allDomains[numDomains] = virDomainLookupByName(conn, inactiveDomains[i]);
     free(inactiveDomains[i]);
-    numDomains++
+    numDomains++;
 }
 free(activeDomains);
 free(inactiveDomains);
