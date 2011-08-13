@@ -1219,6 +1219,160 @@ fprintf(stderr, "Device is suitable for passthrough to a guest\n");
 
     </section>
 
+    <section id="Application_Development_Guide-Live_Config-Block_Jobs">
+      <title>Block Device Jobs</title>
+
+      <para>
+        Libvirt provides a generic Block Job API that can be used to initiate
+        and manage operations on disks that belong to a domain.  Jobs are
+        started by calling the function associated with the desired operation
+        (eg.  <literal>virDomainBlockPull</literal>).  Once started, all block
+        jobs are managed in the same manner.  They can be aborted, throttled,
+        and queried.  Upon completion, an asynchronous event is issued to
+        indicate the final status.
+      </para>
+
+      <para>
+        The following block jobs can be started:
+      </para>
+      <orderedlist>
+        <listitem>
+          <para>
+	    <literal>virDomainBlockPull()</literal> starts a block pull
+            operation for the specified disk.  This operation is valid only for
+            specially configured disks.   BlockPull will populate a disk image
+            with data from its backing image.  Once all data from its backing
+            image has been pulled, the disk no longer depends on a backing
+            image.
+          </para>
+        </listitem>
+      </orderedlist>
+
+      <para>
+        A disk can be queried for active block jobs by using
+        <literal>virDomainGetBlockJobInfo()</literal>.  If found, job
+        information is reported in a structure that contains: the job type,
+        bandwidth throttling setting, and progress information.
+      </para>
+
+      <para>
+        <literal>virDomainBlockJobAbort()</literal> can be used to cancel the
+        active block job on the specified disk.
+      </para>
+
+      <para>
+        Use <literal>virDomainBlockJobSetSpeed()</literal> to limit the amount
+        of bandwidth that a block job may consume.  Bandwidth is specified in
+        units of MB/sec.
+      </para>
+
+      <para>
+        When a block job operation completes, the final status is reported using
+        an asynchronous event.  To receive this event, register a
+        <literal>virConnectDomainEventBlockJobCallback</literal> function which
+        will receive the disk, event type, and status as parameters.
+      </para>
+
+      <programlisting>
+<![CDATA[/* example blockpull-example.c */
+/* compile with: gcc -g -Wall blockpull-example.c -o blockpull-example -lvirt */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <libvirt/libvirt.h>
+
+int do_cmd(const char *cmdline)
+{
+    int status = system(cmdline);
+    if (status < 0)
+        return -1;
+    else
+        return WEXITSTATUS(status);
+}
+
+virDomainPtr make_domain(virConnectPtr conn)
+{
+    virDomainPtr dom;
+    char domxml[] = \
+       "<domain type='kvm'> \
+          <name>example</name> \
+          <memory>131072</memory> \
+          <vcpu>1</vcpu> \
+          <os> \
+            <type arch='x86_64' machine='pc-0.13'>hvm</type> \
+          </os> \
+          <devices> \
+            <disk type='file' device='disk'> \
+              <driver name='qemu' type='qed'/> \
+              <source file='/var/lib/libvirt/images/example.qed' /> \
+              <target dev='vda' bus='virtio'/> \
+            </disk> \
+          </devices> \
+        </domain>";
+
+    do_cmd("qemu-img create -f raw /var/lib/libvirt/images/backing.qed 100M");
+    do_cmd("qemu-img create -f qed -b /var/lib/libvirt/images/backing.qed \
+                /var/lib/libvirt/images/example.qed");
+
+    dom = virDomainCreateXML(conn, domxml, 0);
+    return dom;
+}
+
+int main(int argc, char *argv[])
+{
+    virConnectPtr conn;
+    virDomainPtr dom = NULL;
+    char disk[] = "/var/lib/libvirt/images/example.qed";
+
+    conn = virConnectOpen("qemu:///system");
+    if (conn == NULL) {
+        fprintf(stderr, "Failed to open connection to qemu:///system\n");
+        goto error;
+    }
+
+    dom = make_domain(conn);
+    if (dom == NULL) {
+        fprintf(stderr, "Failed to create domain\n");
+        goto error;
+    }
+
+    if ((virDomainBlockPull(dom, disk, 0, 0)) < 0) {
+        fprintf(stderr, "Failed to start block pull");
+        goto error;
+    }
+
+    while (1) {
+        virDomainBlockJobInfo info;
+        int ret = virDomainGetBlockJobInfo(dom, disk, &info, 0);
+
+        if (ret == 1) {
+            printf("BlockPull progress: %0.0f %%\n",
+                (float)(100 * info.cur / info.end));
+        } else if (ret == 0) {
+            printf("BlockPull complete\n");
+            break;
+        } else {
+            fprintf(stderr, "Failed to query block jobs\n");
+            break;
+        }
+        usleep(100000);
+    }
+
+error:
+    unlink("/var/lib/libvirt/images/backing.qed");
+    unlink("/var/lib/libvirt/images/example.qed");
+    if (dom != NULL) {
+        virDomainDestroy(dom);
+        virDomainFree(dom);
+    }
+    if (conn != NULL)
+        virConnectClose(conn);
+    return 0;
+}]]>
+      </programlisting>
+
+    </section>
+
   </section>
 
   <section id="Application_Development_Guide-Guest_Domains-Security">
