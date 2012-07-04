@@ -1,5 +1,4 @@
 <!ENTITY PRODUCT "libvirt">
 <!ENTITY BOOKID "Application_Development_Guide">
-<!ENTITY YEAR "2009-2010">
-<!ENTITY HOLDER "Red Hat, Inc.">
-
+<!ENTITY HOLDER "Red Hat, Inc. and others.">
+<!ENTITY YEAR "2009, 2010, 2011, 2012">
