@@ -6,9 +6,9 @@
   <title>Application Development Guide</title>
   <subtitle>A guide to application development with libvirt</subtitle>
   <productname>libvirt</productname>
-  <productnumber>0.7.5</productnumber>
-  <edition>1</edition>
-  <pubsnumber>9</pubsnumber>
+  <productnumber>0.9</productnumber>
+  <edition>2</edition>
+  <pubsnumber>2</pubsnumber>
   <abstract>
     <para>This document provides a guide for application developers using libvirt.</para>
   </abstract>
