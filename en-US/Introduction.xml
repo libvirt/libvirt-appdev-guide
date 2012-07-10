@@ -6,9 +6,9 @@
   <title>Introduction</title>
 
   <para>
-    Libvirt is a hypervisor-independent virtualization API that is able to
-    interact with the virtualization capabilities of a range of operating
-    systems.
+    Libvirt is a hypervisor-independent virtualization API and toolkit 
+    that is able to interact with the virtualization capabilities of a range of     operating systems. It is free software under the GNU Lesser General Public
+    License.
   </para>
 
   <para>
