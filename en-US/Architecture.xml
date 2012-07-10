@@ -413,7 +413,7 @@
       <title>libvirt driver architecture</title>
       <mediaobject>
         <imageobject>
-          <imagedata fileref="images/libvirt-driver-arch.png" format="PNG"/>
+          <imagedata fileref="images/159516-libvirt-driver-arch.png" format="PNG"/>
         </imageobject>
       </mediaobject>
     </figure>
@@ -981,14 +981,12 @@
     <section id="Application_Development_Guide-TLS_Cert-Public_Key">
       <title>Public Key Infrastructure setup</title>
 
-      <para>Placeholder</para>
-
       <table id='public_key' frame='none'><title>Public Key setup</title>
         <tgroup cols='4' align='left' colsep='1' rowsep='1'>
-          <colspec colname='c1' colwidth="1"/>
-          <colspec colname='c2' colwidth="1"/>
-          <colspec colname='c3' colwidth="3"/>
-          <colspec colname='c4' colwidth="3"/>
+          <colspec colname='c1' colwidth="10%"/>
+          <colspec colname='c2' colwidth="10%"/>
+          <colspec colname='c3' colwidth="40%"/>
+          <colspec colname='c4' colwidth="40%"/>
           <thead>
             <row>
               <entry><para><emphasis role="bold">Location</emphasis></para></entry>
