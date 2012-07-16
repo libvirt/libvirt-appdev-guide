@@ -57,7 +57,7 @@
 
     <para>
       To avoid ambiguity regarding terms and concepts used in this guide,
-      refer to the following descriptions.
+      refer to the following table for their definitions.
     </para>
 
     <table id='terms' frame='none'><title>Terminology</title>
@@ -67,7 +67,7 @@
         <thead>
           <row>
             <entry><para><emphasis role="bold">Term</emphasis></para></entry>
-            <entry><para><emphasis role="bold">Description</emphasis></para></entry>
+            <entry><para><emphasis role="bold">Definition</emphasis></para></entry>
 
           </row>
         </thead>
@@ -108,7 +108,7 @@
             <entry>
               <para>
                 A collection of storage media, such as physical hard drives. A
-                storage pool is sub-divided into smaller containers called
+                Storage Pool is sub-divided into smaller containers called
                 Volumes, which may then be allocated to one or more Domains. 
               </para>
             </entry>
