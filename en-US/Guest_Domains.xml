@@ -460,14 +460,15 @@ virDomainFree(dom);
   </domain>
   ]]>
 	</programlisting>
-
-	<para>
-	  TIP: Be careful in the choice of initial memory allocation, since
+	<important>
+	 <para>
+	  Be careful in the choice of initial memory allocation, since
 	  too low a value may cause mysterious crashes and installation
 	  failures. Some operating systems need as much as 600 MB of memory
 	  for initial installation, though this can often be reduced
 	  post-install.
-	</para>
+	 </para>
+	</important>
 
         <section id="Application_Development_Guide-Lifecycle-Provisioning-ISO">
 	  <title>CDROM/ISO image provisioning</title>
