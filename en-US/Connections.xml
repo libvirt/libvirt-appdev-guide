@@ -78,10 +78,11 @@ int main(int argc, char *argv[])
 }]]></programlisting>
       </example>
       <para>
-        The above example opens up a read-write connection to the system qemu hypervisor
-        driver, checks to make sure it was successful, and if so closes the
-        connection.  For more information on libvirt URI's, see the libvirt
-        URI section.
+        The above example opens up a read-write connection to the system qemu 
+        hypervisor driver, checks to make sure it was successful, and if so 
+        closes the connection.  For more information on libvirt URIs, refer to 
+        <xref linkend="Application_Development_Guide-Connections-URI_Formats" />        .
+        
       </para>
     </section>
     <section>
@@ -118,8 +119,9 @@ int main(int argc, char *argv[])
       <para>
         The above example opens up a read-only connection to the system qemu hypervisor
         driver, checks to make sure it was successful, and if so closes the
-        connection.  For more information on libvirt URI's, see the libvirt
-        URI section.
+        connection.  For more information on libvirt URIs, refer to
+	<xref linkend="Application_Development_Guide-Connections-URI_Formats" />
+        . 
       </para>
     </section>
     <section>

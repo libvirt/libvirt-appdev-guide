@@ -55,7 +55,7 @@
     <para>
       A guest domain may be transient, or persistent. A transient guest domain
       can only be managed while it is running on the host and, when powered off,
-      all trace of it will disappear. A persistent guest domain has its configuration
+      all traces of it will disappear. A persistent guest domain has its configuration
       maintained in a data store on the host by the hypervisor, in an implementation
       defined format. Thus when a persistent guest is powered off, it is still
       possible to manage its inactive config. A transient guest can be turned into

@@ -43,7 +43,7 @@
         both KVM full machine virtualization and LXC container virtualization. A connection
         object may be used concurrently across multiple threads. Once a connection has been
         established, it is possible to obtain handles to other managed objects or create new
-        managed objects, as discussed in <xref linkend="Application_Development_Guide-Object_Model-Domain"/>..
+        managed objects, as discussed in <xref linkend="Application_Development_Guide-Object_Model-Domain"/>.
       </para>
     </section>
 
@@ -122,7 +122,7 @@
 
       <para>
         A virtual network is represented by the <literal>virNetworkPtr</literal> object and has two unique
-        identifiers.
+        identifiers:
       </para>
 
       <itemizedlist>
@@ -144,7 +144,7 @@
 
 
       <para>
-        A virtual network may be transient or persistent. A transient virtual network can only be managed while it it is running on the host. When taken offline, all trace of it will disappear. A persistent virtual network has its configuration maintained in a data store on the host, in an implementation defined format. Thus when a persistent network is brought offline, it is still possible to manage its inactive config. A transient network can be turned into a persistent network on the fly by defining a configuration for it.
+        A virtual network may be transient or persistent. A transient virtual network can only be managed while it it is running on the host. When taken offline, all traces of it will disappear. A persistent virtual network has its configuration maintained in a data store on the host, in an implementation defined format. Thus when a persistent network is brought offline, it is still possible to manage its inactive config. A transient network can be turned into a persistent network on the fly by defining a configuration for it.
       </para>
 
       <para>
