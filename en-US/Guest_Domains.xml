@@ -88,7 +88,7 @@ dom = virDomainLookupByID(conn, domainID);
     <example>
       <title>Fetching a domain object from an name</title>
       <programlisting>
-int domainName = "someguest";
+char *domainName = "someguest";
 virDomainPtr dom;
 
 dom = virDomainLookupByName(conn, domainName);
