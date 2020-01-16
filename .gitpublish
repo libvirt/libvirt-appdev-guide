@@ -1,4 +1,4 @@
 [gitpublishprofile "default"]
 base = master
 to = libvir-list@redhat.com
-prefix = appdev-guide PATCH
+prefix = libvirt-appdev-guide PATCH
